@@ -2,6 +2,8 @@ library(DBI)
 library(RMariaDB)
 library(shiny)
 
+source('credentials.R')
+
 ui <- fluidPage(
   selectInput(inputId = "regChoice",
               label = "Select Region", 
@@ -17,7 +19,7 @@ server <- function(input, output){
   observeEvent(input$regChoice, {
     
     # Connect to my-db as defined in ~/.my.cnf
-    con <- dbConnect(RMariaDB::MariaDB(),host = "REDACTED", user = "REDACTED", password = "REDACTED", db = "REDACTED", bigint = c("numeric"))
+    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
     stopifnot(is.object(con))  
   
     q1 <- 'select k.prefferredLabel, k.altLabels, a.region_id, count(k.prefferredLabel) as amount from kompetence k, annonce_kompetence ak, annonce a where k._id = ak.kompetence_id and ak.annonce_id = a._id and a.region_id = (select r.region_id from region r where r.name = "'
