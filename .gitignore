@@ -25,4 +25,8 @@ vignettes/*.pdf
 # Shiny token, see https://shiny.rstudio.com/articles/shinyapps.html
 rsconnect/
 .Rproj.user
+<<<<<<< HEAD
+=======
+CompetenceAnalysis.Rproj
+>>>>>>> 1fb9ed4a441ea431f0bb677c86155dae62940b5d
 credentials.R
