@@ -5,177 +5,102 @@ library(shiny)
 source('credentials.R')
 
 ui <- fluidPage(
-  tabsetPanel(
-    
-    ##########     REGION     ##########
-    tabPanel("Region", 
-             selectInput(inputId = "regChoice",
-                         label = "Select Region", 
-                         choices = list("storkoebenhavn", "nordsjaelland", "region-sjaelland", "fyn", "region-nordjylland", "region-midtjylland", "sydjylland", "bornholm", "skaane", "groenland", "faeroeerne", "udlandet"),
-                         multiple = FALSE, 
-                         width = "400px"),
-             plotOutput("regionDiagram")
-    ),
-    
-  
-    ##########     DATE RANGE      ##########
-    tabPanel("Tidsramme", 
-             dateRangeInput('dateRange',
-                           label = 'Date range input: Ældste dato er 2018-05-20',
-                           start = "2018-05-20", end = Sys.Date()
-             ),
-             plotOutput("dateRangeDiagram")
-    ),
-    
-    
-    ##########     KOMPETENCE KATEGORI      ##########
-    tabPanel("Kategori",
-             fluidRow(
-               column(4, 
-                      selectInput(inputId = "availableCategories",
-                                  label = "Tilgængelige Kompetencer:",
-                                  size = 20,
-                                  selectize = FALSE,
-                                  choices = list()
-                      )
-               ),
-               column(4,
-                      actionButton("addKat", "Tilføj Kategori >>"),
-                      actionButton("add", "Tilføj >"),
-                      actionButton("remove", "< Fjern"),
-                      actionButton("removeKat", "<< Fjern Kategori")
-                      
-               ),
-               column(4, 
-                      selectInput(inputId = "selectedCategories",
-                                  label = "Valgte Kompetencer:",
-                                  size = 20,
-                                  selectize = FALSE,
-                                  choices = list()
-                      )
-               )
-            ),
-            actionButton("categoryPlotButton", "Opdater Diagram"),
-            plotOutput("categoryDiagram")
-    ),
-    ##########     COMPOSITE      ##########
-    tabPanel("Composite", 
-              fluidRow(
-                column(6, 
-                  selectInput(inputId = "compositeRegChoice",
-                              label = "Select Region", 
-                              choices = list("Alle Regioner", "storkoebenhavn", "nordsjaelland", "region-sjaelland", "fyn", "region-nordjylland", "region-midtjylland", "sydjylland", "bornholm", "skaane", "groenland", "faeroeerne", "udlandet"),
-                              multiple = FALSE, 
-                              width = "400px"),
-                  dateRangeInput('compositeDateRange',
-                                 label = 'Dato Interval: Ældste dato er 2018-05-20',
-                                 start = "2018-05-20", end = Sys.Date()
-                  ),
-                  textInput(inputId = "searchField", label = "Search Field"),
-                  fluidRow(
-                    column(width = 5,
-                           selectInput(inputId = "compositeAvailableCategories",
-                                       label = "Tilgængelige Kompetencer:",
-                                       size = 20,
-                                       selectize = FALSE,
-                                       choices = list()
+                fluidRow(
+                  column(6,
+                         fluidRow(
+                           column(6,
+                                  selectInput(inputId = "regChoice",
+                                              label = "Select Region", 
+                                              choices = list("Alle Regioner", "storkoebenhavn", "nordsjaelland", "region-sjaelland", "fyn", "region-nordjylland", "region-midtjylland", "sydjylland", "bornholm", "skaane", "groenland", "faeroeerne", "udlandet"),
+                                              multiple = FALSE, 
+                                              width = "400px"
+                                              ),
+                                  dateRangeInput('dateRange',
+                                                 label = 'Dato Interval: Ældste dato er 2018-05-20',
+                                                 start = "2018-05-20", end = Sys.Date()
+                                                 ),
+                                  textInput(inputId = "searchField", label = "Search Field")
+                                 ),
+                           column(6,
+                                  selectInput(inputId = "groupChoice",
+                                              label = "Kompetence grupper: ", 
+                                              choices = list("Alle Grupper", "ict", "ict2", "Core", "language", "multimedie", "transversal", "GartnerForecast", "undefined", "_", "NULL"),
+                                              multiple = FALSE, 
+                                              width = "400px"
+                                              )
+                                 )
+                         ),
+                         fluidRow(
+                           column(5,
+                                  selectInput(inputId = "availableCategories",
+                                              label = "Tilgængelige Kompetencer:",
+                                              size = 20,
+                                              selectize = FALSE,
+                                              choices = list()
+                                  )
+                           ),
+                           column(2,
+                                  actionButton("addKat", "Tilføj Kategori >>"),
+                                  actionButton("add", "Tilføj >"),
+                                  actionButton("remove", "< Fjern"),
+                                  actionButton("removeKat", "<< Fjern Kategori")
+                                  
+                           ),
+                           column(5, 
+                                  selectInput(inputId = "selectedCategories",
+                                              label = "Valgte Kompetencer:",
+                                              size = 20,
+                                              selectize = FALSE,
+                                              choices = list()
+                                  )
                            )
-                    ),
-                    column(width = 2,
-                           actionButton("compositeAddKat", "Tilføj Kategori >>"),
-                           actionButton("compositeAdd", "Tilføj >"),
-                           actionButton("compositeRemove", "< Fjern"),
-                           actionButton("compositeRemoveKat", "<< Fjern Kategori")
-                           
-                    ),
-                    column(width = 5, 
-                           selectInput(inputId = "compositeSelectedCategories",
-                                       label = "Valgte Kompetencer:",
-                                       size = 20,
-                                       selectize = FALSE,
-                                       choices = list()
-                           )
-                    )
+                         )
+                       ),
+                  column(6, 
+                    actionButton("categoryPlotButton", "Opdater Diagram"),
+                    plotOutput("diagram", height = 700)
                   )
-                ),
-                column(6, 
-                  actionButton("compositeCategoryPlotButton", "Opdater Diagram"),
-                  plotOutput("compositeDiagram")
                 )
-              )
-    )
-  )
 )
 
 server <- function(input, output, session){
-  ##########     REGION     ##########
-  ##########     REGION     ##########
-  observeEvent(input$regChoice, {
-    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
-    stopifnot(is.object(con))  
+  availableKompetencer <- reactiveVal()
+  kompetencer <- reactiveValues(ak = NULL, sk = list())
   
-    q1 <- 'select k.prefferredLabel, a.region_id, count(ak.kompetence_id) as amount from kompetence k, annonce_kompetence ak, annonce a where k._id = ak.kompetence_id and ak.annonce_id = a._id and a.region_id = (select r.region_id from region r where r.name = "'
-    q2 <- '") and grp = "Core" group by k._id'
-    q3 <- paste0(q1, input$regChoice, q2)
-    courses <- dbGetQuery(con, q3)
-    dbDisconnect(con)
+  con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+  stopifnot(is.object(con))
+  fullCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id from kompetence order by prefferredLabel asc')
+  dbDisconnect(con)
+  
+  observeEvent(input$groupChoice, {
+    q1 <- 'select prefferredLabel, _id from kompetence where grp="'
+    q2 <- input$groupChoice
+    q3 <- '" order by prefferredLabel asc'
     
-    # Sort data
-    ds <- courses[order(courses$amount, decreasing = TRUE),]
-    rownames(ds) <- NULL
-     
-    # Output data
-    output$regionDiagram <- renderPlot(
-      barplot(ds$amount, 
-              main=paste0("Antal jobopslag for fag i regionen: ", input$regChoice), 
-              names.arg = ds$prefferredLabel,
-              las = 2
-    ))
-  })
-  
-  ##########     DATE RANGE      ##########
-  ##########     DATE RANGE      ##########
-  observeEvent(input$dateRange, {
+    if      (q2 == "_"){q2 <- ""} #Can't put empty string in selectInput, so _ is used to represent the empty string group.
+    else if (q2 == "NULL"){q1 <- 'select prefferredLabel, _id from kompetence where grp is '; q3 <- ' order by prefferredLabel asc'}
+    
     con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
     stopifnot(is.object(con))
     
-    q1 <- 'select k.prefferredLabel, k.altLabels, a.lastUpdated, a.timeStamp, count(k.prefferredLabel) as amount from kompetence k, annonce_kompetence ak, annonce a where k._id = ak.kompetence_id and ak.annonce_id = a._id and grp = "ict" and a.timeStamp between "'
-    q2 <- '" and "'
-    q3 <- '" group by k._id'
-    q4 <- paste0(q1, format(input$dateRange[1]), q2, format(input$dateRange[2]), q3)
-    
-    uData <- dbGetQuery(con, q4)
+    if (q2 == "Alle Grupper"){
+      availableCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id from kompetence order by prefferredLabel asc')
+    }
+    else{
+      availableCategoryData <- dbGetQuery(con, paste0(q1, q2, q3))
+    }
     dbDisconnect(con)
+    availableKompetencer <- as.matrix(availableCategoryData)[,1]
+    kompetencer$ak <- as.matrix(availableCategoryData)[,1]
     
-    # Sort data
-    data <- uData[order(uData$amount, decreasing = TRUE),]
-    rownames(data) <- NULL
-    
-    # Output data
-    output$dateRangeDiagram <- renderPlot(
-      barplot(data$amount, 
-              main=paste0("Antal jobopslag for kompetencer indenfor tidsrammen: ", format(input$dateRange[1]) , " til ", format(input$dateRange[2])), 
-              names.arg = data$prefferredLabel,
-              las = 2
-    ))
+    updateSelectInput(session,
+                      inputId = "availableCategories",
+                      choices = kompetencer$ak
+    )
   })
   
-  ##########     KOMPETENCE KATEGORI      ##########
-  ##########     KOMPETENCE KATEGORI      ##########
-  con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
-  stopifnot(is.object(con))
-  availableCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id from kompetence where grp="ict" order by prefferredLabel asc')
-  dbDisconnect(con)
-  
-  availableKompetencer <- as.matrix(availableCategoryData)[,1]
-  kompetencer <- reactiveValues(ak = as.matrix(availableCategoryData)[,1], sk = list())
-  
-  updateSelectInput(session,
-                    inputId = "availableCategories", 
-                    choices = availableKompetencer
-  )
-
-  
+  #####     ADD/REMOVE OBSERVERS     #####
+  ########################################
   observeEvent(input$add, {
     if (!is.null(input$availableCategories)){
       
@@ -219,19 +144,28 @@ server <- function(input, output, session){
       while (!done){
         subList = list()
         for (superKompetence in searchList){
-          subData <- dbGetQuery(con, paste0('select dt.prefferredLabel from (select k.prefferredLabel, k.grp from kompetence k, kompetence_kategorisering kk where k.conceptUri = kk.subkompetence and kk.superkompetence = (select distinct k.conceptUri from kompetence k, kompetence_kategorisering kk where k.prefferredLabel = "', superKompetence, '" and k.conceptUri = kk.superkompetence)) dt where dt.grp = "ict"'))
+          subData <- dbGetQuery(con, paste0('select k.prefferredLabel from kompetence k, kompetence_kategorisering kk where k.conceptUri = kk.subkompetence and kk.superkompetence = (select distinct k.conceptUri from kompetence k, kompetence_kategorisering kk where k.prefferredLabel = "', superKompetence, '" and k.conceptUri = kk.superkompetence)'))
           subList <- c(subList, as.vector(as.matrix(subData)))
         }
         finalList <- c(finalList, searchList)
         searchList <- subList
-        if (length(subList) == 0){
+        
+        if (length(searchList) == 0){
           done <- TRUE
         }
+        else
+        {
+          # Removes all elements from searchList that are present in the finalList, this is to prevent a loop.
+          # Example that would result in a loop: 'Digital kommunikation og kollaboration'
+          # It still takes several seconds as there's quite a lot of subkompetencer, over half of them belongs under it.
+          searchList <- setdiff(searchList, finalList)
+        }
+        
       }
       dbDisconnect(con)
       
       for (kompetence in finalList){
-        if (!any(kompetencer$sk==kompetence)){
+        if (!any(kompetencer$sk == kompetence)){
           kompetencer$sk <- c(kompetencer$sk, kompetence)
           kompetencer$ak <- kompetencer$ak[kompetencer$ak != kompetence]
         }
@@ -258,7 +192,7 @@ server <- function(input, output, session){
       while (!done){
         subList = list()
         for (superKompetence in searchList){
-          subData <- dbGetQuery(con, paste0('select dt.prefferredLabel from (select k.prefferredLabel, k.grp from kompetence k, kompetence_kategorisering kk where k.conceptUri = kk.subkompetence and kk.superkompetence = (select distinct k.conceptUri from kompetence k, kompetence_kategorisering kk where k.prefferredLabel = "', superKompetence, '" and k.conceptUri = kk.superkompetence)) dt where dt.grp = "ict"'))
+          subData <- dbGetQuery(con, paste0('select k.prefferredLabel from kompetence k, kompetence_kategorisering kk where k.conceptUri = kk.subkompetence and kk.superkompetence = (select distinct k.conceptUri from kompetence k, kompetence_kategorisering kk where k.prefferredLabel = "', superKompetence, '" and k.conceptUri = kk.superkompetence)'))
           subList <- c(subList, as.vector(as.matrix(subData)))
         }
         finalList <- c(finalList, searchList)
@@ -268,12 +202,14 @@ server <- function(input, output, session){
         }
       }
       dbDisconnect(con)
-      
+      #print(kompetencer$ak)
       for (kompetence in finalList){
-        if (!any(kompetencer$ak==kompetence)){
-          kompetencer$ak <- c(kompetencer$ak, kompetence)
-          kompetencer$sk <- kompetencer$sk[kompetencer$sk != kompetence]
-        }
+       #print(kompetence)
+       #print(kompetencer$ak == kompetence, max = 20000)
+       #if (!any(kompetencer$ak == kompetence)){
+        kompetencer$ak <- c(kompetencer$ak, kompetence)
+        kompetencer$sk <- kompetencer$sk[kompetencer$sk != kompetence]
+       #}
       }
       updateSelectInput(session,
                         inputId = "selectedCategories", 
@@ -285,195 +221,33 @@ server <- function(input, output, session){
       )
     }
   })
-  observeEvent(input$categoryPlotButton, {
-    if(length(kompetencer$sk) != 0){
-      matchIndexes <- list()
-      categoryMatrix <- as.matrix(availableCategoryData)
-      for (kompetence in kompetencer$sk){
-        matchIndexes <- c(matchIndexes, which(categoryMatrix[,1] == kompetence))
-      }
-      kompetenceIds <- list()
-      for (index in matchIndexes){
-        kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
-      }
-      con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
-      stopifnot(is.object(con))
-      
-      kompetenceData <- data.frame()
-      
-      for (id in kompetenceIds){
-        kompetenceData <- rbind(kompetenceData, dbGetQuery(con, paste0('select k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id where k._id = ', id, ' group by k._id')))
-      }
-      dbDisconnect(con)
-      
-      
-      output$categoryDiagram <- renderPlot(
-        barplot(kompetenceData$amount, 
-                main="Antal jobopslag for valgte kompetencer ", 
-                names.arg = kompetenceData$prefferredLabel,
-                las = 2
-        ))
-    }
-  })
-  ############### COMPOSITE ###############
-  ############### COMPOSITE ###############
-  #con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
-  #stopifnot(is.object(con))
-  #availableCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id from kompetence where grp="ict" order by prefferredLabel asc')
-  #dbDisconnect(con)
-  
-  #availableKompetencer <- as.matrix(availableCategoryData)[,1]
-  compositeKompetencer <- reactiveValues(ak = as.matrix(availableCategoryData)[,1], sk = list())
-  
-  updateSelectInput(session,
-                    inputId = "compositeAvailableCategories", 
-                    choices = availableKompetencer
-  )
-  
-  
-  observeEvent(input$compositeAdd, {
-    if (!is.null(input$compositeAvailableCategories)){
-      
-      compositeKompetencer$sk <- c(compositeKompetencer$sk, input$compositeAvailableCategories)
-      compositeKompetencer$ak <- compositeKompetencer$ak[compositeKompetencer$ak != input$compositeAvailableCategories]    
-      
-      updateSelectInput(session,
-                        inputId = "compositeSelectedCategories", 
-                        choices = compositeKompetencer$sk
-      )
-      updateSelectInput(session,
-                        inputId = "compositeAvailableCategories", 
-                        choices = compositeKompetencer$ak
-      )
-    }
-  })
-  observeEvent(input$compositeRemove, {
-    if (!is.null(input$compositeSelectedCategories)){
-      compositeKompetencer$ak <- c(compositeKompetencer$ak, input$compositeSelectedCategories)
-      compositeKompetencer$sk <- compositeKompetencer$sk[compositeKompetencer$sk != input$compositeSelectedCategories]    
-      
-      updateSelectInput(session,
-                        inputId = "compositeSelectedCategories", 
-                        choices = compositeKompetencer$sk
-      )
-      updateSelectInput(session,
-                        inputId = "compositeAvailableCategories", 
-                        choices = compositeKompetencer$ak
-      )
-    }
-  })
-  observeEvent(input$compositeAddKat, {
-    if (!is.null(input$compositeAvailableCategories)){
-      done <- FALSE
-      finalList <- list()
-      searchList <- list(input$compositeAvailableCategories)
-      
-      con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
-      stopifnot(is.object(con))
-      
-      while (!done){
-        subList = list()
-        for (superKompetence in searchList){
-          subData <- dbGetQuery(con, paste0('select dt.prefferredLabel from (select k.prefferredLabel, k.grp from kompetence k, kompetence_kategorisering kk where k.conceptUri = kk.subkompetence and kk.superkompetence = (select distinct k.conceptUri from kompetence k, kompetence_kategorisering kk where k.prefferredLabel = "', superKompetence, '" and k.conceptUri = kk.superkompetence)) dt where dt.grp = "ict"'))
-          subList <- c(subList, as.vector(as.matrix(subData)))
-        }
-        finalList <- c(finalList, searchList)
-        searchList <- subList
-        
-        if (length(searchList) == 0){
-          done <- TRUE
-        }
-        else
-        {
-          # Removes all elements from searchList that are present in the finalList, this is to prevent a loop.
-          # Example that would result in a loop: 'Digital kommunikation og kollaboration'
-          # It still takes several seconds as there's quite a lot of subkompetencer, over half of them belongs under it.
-          searchList <- setdiff(searchList, finalList)
-        }
-        
-      }
-      dbDisconnect(con)
-      
-      for (kompetence in finalList){
-        if (!any(compositeKompetencer$sk==kompetence)){
-          compositeKompetencer$sk <- c(compositeKompetencer$sk, kompetence)
-          compositeKompetencer$ak <- compositeKompetencer$ak[compositeKompetencer$ak != kompetence]
-        }
-      }
-      updateSelectInput(session,
-                        inputId = "compositeSelectedCategories", 
-                        choices = compositeKompetencer$sk
-      )
-      updateSelectInput(session,
-                        inputId = "compositeAvailableCategories", 
-                        choices = compositeKompetencer$ak
-      )
-    }
-  })
-  observeEvent(input$compositeRemoveKat, {
-    if (!is.null(input$compositeSelectedCategories)){
-      done <- FALSE
-      finalList <- list()
-      searchList <- list(input$compositeSelectedCategories)
-      
-      con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
-      stopifnot(is.object(con))
-      
-      while (!done){
-        subList = list()
-        for (superKompetence in searchList){
-          subData <- dbGetQuery(con, paste0('select dt.prefferredLabel from (select k.prefferredLabel, k.grp from kompetence k, kompetence_kategorisering kk where k.conceptUri = kk.subkompetence and kk.superkompetence = (select distinct k.conceptUri from kompetence k, kompetence_kategorisering kk where k.prefferredLabel = "', superKompetence, '" and k.conceptUri = kk.superkompetence)) dt where dt.grp = "ict"'))
-          subList <- c(subList, as.vector(as.matrix(subData)))
-        }
-        finalList <- c(finalList, searchList)
-        searchList <- subList
-        if (length(subList) == 0){
-          done <- TRUE
-        }
-      }
-      dbDisconnect(con)
-      
-      for (kompetence in finalList){
-        if (!any(compositeKompetencer$ak==kompetence)){
-          compositeKompetencer$ak <- c(compositeKompetencer$ak, kompetence)
-          compositeKompetencer$sk <- compositeKompetencer$sk[compositeKompetencer$sk != kompetence]
-        }
-      }
-      updateSelectInput(session,
-                        inputId = "compositeSelectedCategories", 
-                        choices = compositeKompetencer$sk
-      )
-      updateSelectInput(session,
-                        inputId = "compositeAvailableCategories", 
-                        choices = compositeKompetencer$ak
-      )
-    }
-  })
+  #######################################
   observeEvent(input$searchField, {
     if (input$searchField != ""){
       foundKompetencer <- list()
-      for (kompetence in compositeKompetencer$ak){
-        if (grepl(input$searchField, kompetence, fixed = TRUE)){
+      for (kompetence in kompetencer$ak){
+        if (grepl(toupper(input$searchField), toupper(kompetence), fixed = TRUE)){
           foundKompetencer <- c(foundKompetencer, kompetence)
         }
       }
       updateSelectInput(session,
-                        inputId = "compositeAvailableCategories",
+                        inputId = "availableCategories",
                         choices = foundKompetencer
       )
     }
     else{
       updateSelectInput(session,
-                        inputId = "compositeAvailableCategories",
-                        choices = compositeKompetencer$ak
+                        inputId = "availableCategories",
+                        choices = kompetencer$ak
       )
     }
   })
-  observeEvent(input$compositeCategoryPlotButton, {
-    if(length(compositeKompetencer$sk) != 0){
+  
+  observeEvent(input$categoryPlotButton, {
+    if(length(kompetencer$sk) != 0){
       matchIndexes <- list()
-      categoryMatrix <- as.matrix(availableCategoryData)
-      for (kompetence in compositeKompetencer$sk){
+      categoryMatrix <- as.matrix(fullCategoryData)
+      for (kompetence in kompetencer$sk){
         matchIndexes <- c(matchIndexes, which(categoryMatrix[,1] == kompetence))
       }
       kompetenceIds <- list()
@@ -489,14 +263,14 @@ server <- function(input, output, session){
       #q2 is kompetence id, set in loop due to it being the one iterated on.
       ####REGION####
       q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
-      q4 <- input$compositeRegChoice            #region name
+      q4 <- input$regChoice            #region name
       q5 <- '")'
-      if (q4 == "Alle Regioner"){q3=""; q4=""; q5=""} #Skærer region select ud af querien hvis regionen er 'Alle Regioner'
+      if (q4 == "Alle Regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle Regioner'
       ##############
       q6 <- ' and a.timeStamp between "'
-      q7 <- format(input$compositeDateRange[1]) #Start date
+      q7 <- format(input$dateRange[1]) #Start date
       q8 <- '" and "'
-      q9 <- format(input$compositeDateRange[2]) #End date
+      q9 <- format(input$dateRange[2]) #End date
       q10 <- '" group by k._id'
       
       
@@ -504,17 +278,19 @@ server <- function(input, output, session){
         q2 <- id
         kompetenceData <- rbind(kompetenceData, dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)))
       }
+      
       dbDisconnect(con)
-      
       kompetenceData <- kompetenceData[order(kompetenceData$amount, decreasing = TRUE),]
+      #print(kompetenceData) #print to get table of data
       
-      par(mar = c(25,6,4,2) + 0.1)
-      output$compositeDiagram <- renderPlot(
+      op <- par(mar = c(15,5,5,2) + 0.1)
+      output$diagram <- renderPlot(
         barplot(kompetenceData$amount, 
                 main="Antal jobopslag for valgt region, tidsramme & kompetencer ", 
                 names.arg = kompetenceData$prefferredLabel,
-                las = 2,
+                las = 2
         ))
+      par(op)
     }
   })  
 }
