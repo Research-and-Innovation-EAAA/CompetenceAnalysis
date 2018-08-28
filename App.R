@@ -59,8 +59,19 @@ ui <- fluidPage(
            )
     ),
     column(6, 
-           actionButton("kompetencePlotButton", "Vis kompetencer i Diagram"),
-           actionButton("progressionPlotButton", "Vis progression i Diagram"),
+           fluidRow(
+             column(6,
+                    actionButton("kompetencePlotButton", "Vis kompetencer i Diagram")
+                    
+                    ),
+             column(6,
+                    actionButton("progressionPlotButton", "Vis progression i Diagram"),
+                    selectInput(inputId = "progressionDateFormat", 
+                                label = "Dato Opdeling", 
+                                choices = list("Uge", "Måned", "År")
+                                )
+                    )
+           ),
            plotOutput("diagram", height = 700)
     )
   )
@@ -102,6 +113,7 @@ server <- function(input, output, session){
     )
   })
   
+  ########################################
   #####     ADD/REMOVE OBSERVERS     #####
   ########################################
   observeEvent(input$add, {
@@ -220,6 +232,7 @@ server <- function(input, output, session){
     }
   })
   #######################################
+  #######################################
   observeEvent(input$searchField, {
     if (input$searchField != ""){
       foundKompetencer <- list()
@@ -241,6 +254,7 @@ server <- function(input, output, session){
     }
   })
   
+  #########################################
   #####     PLOT BUTTON OBSERVERS     #####
   #########################################
   observeEvent(input$kompetencePlotButton, {
@@ -284,11 +298,12 @@ server <- function(input, output, session){
       #print(kompetenceData) #print to get table of data
       
       output$diagram <- renderPlot({
-        par(mar = c(15,5,5,2) + 0.1)
+        par(mar = c(5,15,4,2) + 0.1)
         barplot(kompetenceData$amount, 
                 main="Antal jobopslag for valgt region, tidsramme & kompetencer ", 
                 names.arg = kompetenceData$prefferredLabel,
-                las = 2
+                las = 2,
+                horiz = TRUE
         )
       })
     }
@@ -334,63 +349,56 @@ server <- function(input, output, session){
       progressionData <- progressionData %>% group_by(date) %>% summarize(amount = sum(amount))
       progressionData <- progressionData[order(progressionData$date, decreasing = FALSE),]
       
-      op <- par(mar = c(15,5,5,2) + 0.1)
+      xInc <- 1
+      format <- ""
+      if (input$progressionDateFormat == "Uge"){
+        format <- "%Y-%W"
+        xInc <- 7
+      }
+      else if (input$progressionDateFormat == "Måned"){
+        format <- "%Y-%m"
+        xInc <- 30
+      }
+      else if (input$progressionDateFormat == "År"){
+        format <- "%Y"
+        xInc <- 365
+      }
       
-      output$diagram <- renderPlot(
-        ggplot(progressionData,
-               aes(x=date, y= amount)
-        ) + geom_bar(stat="identity") +
-          geom_smooth(method = "lm", se = FALSE) +
-          labs(x = "Dato Progression", y = "Mængde af annoncer") +
-          theme_bw()
-      )
+      formattedData <- progressionData %>% group_by(format(date, format)) %>% summarize(amount = sum(amount))
+      colnames(formattedData)[1] <- "date"
       
-      # if (FALSE){
-      #   output$diagram <- renderPlot({ #Plot code mostly taken from https://github.com/EconometricsBySimulation/OLS-demo-App/blob/master/server.R
-      #     
-      #     names(progressionData) <- c("x", "y")
-      #     #regress <- paste(input$regression, "- 1")
-      #     #print(regress)
-      #     
-      #     altData <- data.frame(sapply(progressionData[,1], as.numeric), progressionData[,2])
-      #     print(altData)
-      #     
-      #     lmResults <- lm(input$regression, data=altData)
-      #     #print(lmResults) # Problem here, the results are unchanged regardless of the formula provided.
-      #     #print(input$regression)
-      #     x <- progressionData$x
-      #     y <- progressionData$y
-      #     if(FALSE){
-      #       xcon <- seq(min(x), max(x), 1)
-      #       print(xcon)
-      #       x2 <- as.numeric(xcon)^2
-      #       x3 <- as.numeric(xcon)^2
-      #       x4 <- as.numeric(xcon)^2
-      #       x5 <- as.numeric(xcon)^2
-      #       
-      #       predictor <- data.frame(x=xcon,x2=x2,x3=x3,x4=x4,x5=x5)
-      #       #print(predictor)
-      #     }
-      #     #yhat <- predict(lmResults)
-      #     
-      #     yline <- predict(lmResults)
-      #     #print(xcon)
-      #     #print(yline)
-      #     
-      #     
-      #     plot(c(min(x), max(x)),
-      #          c(min(y, yline), max(y, yline)),
-      #          type = "n",
-      #          xlab = "Tids progression",
-      #          ylab = "Mængde af ansøgninger",
-      #          main = "Progression over tid for mængden af ansøgninger for de givne kompetencer"
-      #     )
-      #     lines(x, yline, lwd=15, col=grey(.9))
-      #     points(x,y)
-      #     lines(x, yline, lwd=2, col="blue")
-      #   })
-      # }
-      par(op)
+      #print(formattedData)
+      
+      x <- 0
+      y <- 0
+      xy <- 0
+      x2 <- 0
+      y2 <- 0
+      n <- nrow(formattedData)
+      for (i in 1:n){
+        x <- x + i * xInc
+        y <- y + formattedData$amount[i]
+        xy <- xy + ((i * xInc) * formattedData$amount[i])
+        x2 <- x2 + (i * xInc)^2
+        y2 <- y2 + formattedData$amount[i]^2
+      }
+      
+      #print(paste0("x: ", x, ", y: ", y, ", xy: ", xy, ", x2: ", x2, ", y2: ", y2, ", n: ", n ))
+      
+      a <- (y * x2 - x * xy) / (n * x2 - x ^ 2)
+      b <- (n * xy - x * y) / (n * x2 - x ^ 2)
+      
+      #print (paste0("a: ", a, ", b: ", b))
+      
+      output$diagram <- renderPlot({
+        barplot(formattedData$amount, names.arg = formattedData$date)
+        if (n > 1) 
+        {
+          #As of writing this code there is only data from about 4 months, so less than a year.
+          #If n is 1 it will result in an error when doing regression, and it is currently 1 when choosing year.
+          abline(a=a, b=b, col = "red", lwd = 3)
+        }
+      })
       
     }
   })
