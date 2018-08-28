@@ -294,7 +294,7 @@ server <- function(input, output, session){
       }
       
       dbDisconnect(con)
-      kompetenceData <- kompetenceData[order(kompetenceData$amount, decreasing = TRUE),]
+      kompetenceData <- kompetenceData[order(kompetenceData$amount, decreasing = FALSE),]
       #print(kompetenceData) #print to get table of data
       
       output$diagram <- renderPlot({
