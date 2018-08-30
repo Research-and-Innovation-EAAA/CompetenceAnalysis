@@ -7,72 +7,100 @@ library(ggplot2)
 source('credentials.R')
 
 ui <- fluidPage(
+  fluidRow(style = "border-bottom: 2px solid black",
+    column(4, img(src = "EAAA_Logo.jpg")),
+    column(8, titlePanel(title = "JOB ANNONCE ANALYSE", windowTitle = "Annonce Analyse"))
+  ),
   fluidRow(
     column(6,
-           fluidRow(
-             column(6,
-                    selectInput(inputId = "regChoice",
-                                label = "Select Region", 
-                                choices = list("Alle Regioner", "storkoebenhavn", "nordsjaelland", "region-sjaelland", "fyn", "region-nordjylland", "region-midtjylland", "sydjylland", "bornholm", "skaane", "groenland", "faeroeerne", "udlandet"),
-                                multiple = FALSE, 
-                                width = "400px"
-                    ),
-                    dateRangeInput('dateRange',
-                                   label = 'Dato Interval: Ældste dato er 2018-05-20',
-                                   start = "2018-05-20", end = Sys.Date()
-                    ),
-                    textInput(inputId = "searchField", label = "Search Field")
+           wellPanel(
+             fluidRow(
+               column(6,
+                      textInput(inputId = "searchField", label = "Search Field")
+               ),
+               column(6,
+                      selectInput(inputId = "groupChoice",
+                                  label = "Kompetence grupper: ", 
+                                  choices = list("Alle Grupper", "ict", "ict2", "Core", "language", "multimedie", "transversal", "GartnerForecast", "undefined", "_", "NULL"),
+                                  multiple = FALSE, 
+                                  width = "400px"
+                      )
+               )
              ),
-             column(6,
-                    selectInput(inputId = "groupChoice",
-                                label = "Kompetence grupper: ", 
-                                choices = list("Alle Grupper", "ict", "ict2", "Core", "language", "multimedie", "transversal", "GartnerForecast", "undefined", "_", "NULL"),
-                                multiple = FALSE, 
-                                width = "400px"
-                    )
+             wellPanel(
+               fluidRow(
+                 column(4,
+                        selectInput(inputId = "availableCategories",
+                                    label = "Tilgængelige Kompetencer:",
+                                    size = 20,
+                                    selectize = FALSE,
+                                    multiple = TRUE,
+                                    choices = list(),
+                                    width = "100%"
+                        )
+                 ),
+                 column(4, align = "center", style = "margin-top: 75px;",
+                        actionButton("addKat", "Tilføj Kategori >>", width = 150),
+                        actionButton("add", "Tilføj >", width = 150),
+                        actionButton("remove", "< Fjern", width = 150),
+                        actionButton("removeKat", "<< Fjern Kategori", width = 150)
+                        
+                 ),
+                 column(4, 
+                        selectInput(inputId = "selectedCategories",
+                                    label = "Valgte Kompetencer:",
+                                    size = 20,
+                                    selectize = FALSE,
+                                    multiple = TRUE,
+                                    choices = list(),
+                                    width = "100%"
+                        )
+                 )
+               )
              )
-           ),
-           fluidRow(
-             column(5,
-                    selectInput(inputId = "availableCategories",
-                                label = "Tilgængelige Kompetencer:",
-                                size = 20,
-                                selectize = FALSE,
-                                choices = list()
-                    )
-             ),
-             column(2,
-                    actionButton("addKat", "Tilføj Kategori >>"),
-                    actionButton("add", "Tilføj >"),
-                    actionButton("remove", "< Fjern"),
-                    actionButton("removeKat", "<< Fjern Kategori")
-                    
-             ),
-             column(5, 
-                    selectInput(inputId = "selectedCategories",
-                                label = "Valgte Kompetencer:",
-                                size = 20,
-                                selectize = FALSE,
-                                choices = list()
-                    )
-             )
+             
            )
+           
     ),
     column(6, 
-           fluidRow(
-             column(6,
-                    actionButton("kompetencePlotButton", "Vis kompetencer i Diagram")
-                    
-                    ),
-             column(6,
-                    actionButton("progressionPlotButton", "Vis progression i Diagram"),
-                    selectInput(inputId = "progressionDateFormat", 
-                                label = "Dato Opdeling", 
-                                choices = list("Uge", "Måned", "År")
-                                )
-                    )
+           wellPanel(
+             fluidRow(
+               column(6,
+                      selectInput(inputId = "regChoice",
+                                  label = "Vælg Region", 
+                                  choices = list("Alle Regioner", "storkoebenhavn", "nordsjaelland", "region-sjaelland", "fyn", "region-nordjylland", "region-midtjylland", "sydjylland", "bornholm", "skaane", "groenland", "faeroeerne", "udlandet"),
+                                  multiple = FALSE, 
+                                  width = "400px"
+                      )
+               ),
+               column(6,
+                      dateRangeInput('dateRange',
+                                     label = 'Dato Interval: Ældste dato er 2018-05-20',
+                                     start = "2018-05-20", end = Sys.Date()
+                      )
+               )
+             )
            ),
-           plotOutput("diagram", height = 700)
+           tabsetPanel(
+             tabPanel("Kompetence Sammenligning",
+                      wellPanel(
+                        actionButton("kompetencePlotButton", "Opdater Diagram"),
+                        plotOutput("kompetenceDiagram", height = 620)
+                      )
+                    
+             ),
+             tabPanel("Progression",
+                      wellPanel(
+                        actionButton("progressionPlotButton", "Opdater Diagram"),
+                        selectInput(inputId = "progressionDateFormat", 
+                                    label = "Dato Opdeling", 
+                                    choices = list("Uge", "Måned", "År")
+                        ),
+                        plotOutput("progressionDiagram", height = 540)
+                      )
+             )
+           )
+           
     )
   )
                 
@@ -151,7 +179,7 @@ server <- function(input, output, session){
     if (!is.null(input$availableCategories)){
       done <- FALSE
       finalList <- list()
-      searchList <- list(input$availableCategories)
+      searchList <- c(input$availableCategories)
       
       con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
       stopifnot(is.object(con))
@@ -172,7 +200,7 @@ server <- function(input, output, session){
         {
           # Removes all elements from searchList that are present in the finalList, this is to prevent a loop.
           # Example that would result in a loop: 'Digital kommunikation og kollaboration'
-          # It still takes several seconds as there's quite a lot of subkompetencer, over half of them belongs under it.
+          # Over half the items under group ict belongs under that example.
           searchList <- setdiff(searchList, finalList)
         }
         
@@ -199,7 +227,7 @@ server <- function(input, output, session){
     if (!is.null(input$selectedCategories)){
       done <- FALSE
       finalList <- list()
-      searchList <- list(input$selectedCategories)
+      searchList <- c(input$selectedCategories)
       
       con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
       stopifnot(is.object(con))
@@ -273,8 +301,8 @@ server <- function(input, output, session){
       
       kompetenceData <- data.frame()
       
-      q1 <- 'select k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
-      #q2 is kompetence id, set in loop due to it being the one iterated on.
+      q1 <- 'select k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where ('
+      q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
       ####REGION####
       q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
       q4 <- input$regChoice            #region name
@@ -285,19 +313,23 @@ server <- function(input, output, session){
       q7 <- format(input$dateRange[1]) #Start date
       q8 <- '" and "'
       q9 <- format(input$dateRange[2]) #End date
-      q10 <- '" group by k._id'
+      q10 <- '" group by k._id order by amount desc limit 30'
       
-      
-      for (id in kompetenceIds){
-        q2 <- id
-        kompetenceData <- rbind(kompetenceData, dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)))
+      for (i in 1:length(kompetenceIds)){
+        if (i < length(kompetenceIds)){
+          q2 <- paste0(q2, (paste0('k._id = ', kompetenceIds[i], ' or ')))
+        }
+        else{
+          q2 <- paste0(q2, (paste0('k._id = ', kompetenceIds[i], ')')))
+        }
       }
+      
+      kompetenceData <- dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10))
       
       dbDisconnect(con)
       kompetenceData <- kompetenceData[order(kompetenceData$amount, decreasing = FALSE),]
-      #print(kompetenceData) #print to get table of data
       
-      output$diagram <- renderPlot({
+      output$kompetenceDiagram <- renderPlot({
         par(mar = c(5,15,4,2) + 0.1)
         barplot(kompetenceData$amount, 
                 main="Antal jobopslag for valgt region, tidsramme & kompetencer ", 
@@ -348,7 +380,6 @@ server <- function(input, output, session){
       
       progressionData <- progressionData %>% group_by(date) %>% summarize(amount = sum(amount))
       progressionData <- progressionData[order(progressionData$date, decreasing = FALSE),]
-      
       xInc <- 1
       format <- ""
       if (input$progressionDateFormat == "Uge"){
@@ -367,7 +398,93 @@ server <- function(input, output, session){
       formattedData <- progressionData %>% group_by(format(date, format)) %>% summarize(amount = sum(amount))
       colnames(formattedData)[1] <- "date"
       
-      #print(formattedData)
+      lastDate <- ""
+      n <- nrow(formattedData)
+      print(n)
+      for (i in 1:n){
+        if (lastDate != ""){
+          
+          year <- as.numeric(substr(formattedData$date[i], 1, 4))
+          prevYear <- as.numeric(substr(lastDate, 1, 4))
+          yearDif <- year - prevYear
+          
+          if (format != "%Y"){ #Diagram split into weeks or months
+            if (yearDif == 0){
+              lastPeriod <- as.numeric(strsplit(lastDate, "-")[[1]][2])
+              currentPeriod <- as.numeric(strsplit(formattedData$date[i], "-")[[1]][2])
+              if (lastPeriod + 1 != currentPeriod){
+                missingPeriods <- currentPeriod - lastPeriod - 1
+                
+                for (j in (lastPeriod+1):(lastPeriod+missingPeriods)){
+                  # Assemble date, then add it
+                  # https://stackoverflow.com/questions/28467068/add-row-to-dataframe
+                  if (j < 10){
+                    df <- data.frame(paste0(year, "-0", j), 0)
+                    names(df) <- c("date", "amount")
+                    formattedData <- rbind(formattedData, df)
+                  }
+                  else{
+                    df <- data.frame(paste0(year, "-", j), 0)
+                    names(df) <- c("date", "amount")
+                    formattedData <- rbind(formattedData, df)
+                  }
+                }
+              }
+            }
+            else{
+              for (j in prevYear:year){
+                lastPeriod <- 1;
+                if (j == prevYear){
+                  lastPeriod <- as.numeric(substr(x = lastDate, length(lastDate)-1, length(lastDate)+1))
+                }
+                if (j < year){
+                  yearLength <- 52
+                  if (format == "%Y-%m"){
+                    yearLength <- 12
+                  }
+                  for (u in lastPeriod:yearLength){
+                    if (u < 10){
+                      df <- data.frame(paste0(j, "-0", u), 0)
+                      names(df) <- c("date", "amount")
+                      formattedData <- rbind(formattedData, df)
+                    }
+                    else{
+                      df <- data.frame(paste0(j, "-", u), 0)
+                      names(df) <- c("date", "amount")
+                      formattedData <- rbind(formattedData, df)
+                    }
+                  }
+                }
+                else{
+                  currentPeriod <- as.numeric(substr(x = formattedData$date[i], length(formattedData$date[i])-1, length(formattedData$date[i])+1))
+                  for (u in lastPeriod:currentPeriod-1){
+                    if (u < 10){
+                      df <- data.frame(paste0(j, "-0", u), 0)
+                      names(df) <- c("date", "amount")
+                      formattedData <- rbind(formattedData, df)
+                    }
+                    else{
+                      df <- data.frame(paste0(j, "-", u), 0)
+                      names(df) <- c("date", "amount")
+                      formattedData <- rbind(formattedData, df)
+                    }
+                  }
+                }
+              }
+            }
+          }
+          else{ # Diagram split into years
+            for (j in (prevYear+1):(year-1)){
+              df <- data.frame(toString(j), 0)
+              names(df) <- c("date", "amount")
+              formattedData <- rbind(formattedData, df)
+            }
+          }
+        }
+        lastDate <- formattedData$date[i]
+      }
+      
+      formattedData <- formattedData[order(formattedData$date, decreasing = FALSE),]
       
       x <- 0
       y <- 0
@@ -381,6 +498,8 @@ server <- function(input, output, session){
         xy <- xy + ((i * xInc) * formattedData$amount[i])
         x2 <- x2 + (i * xInc)^2
         y2 <- y2 + formattedData$amount[i]^2
+        
+        lastDate <- formattedData$date[i]
       }
       
       #print(paste0("x: ", x, ", y: ", y, ", xy: ", xy, ", x2: ", x2, ", y2: ", y2, ", n: ", n ))
@@ -390,7 +509,7 @@ server <- function(input, output, session){
       
       #print (paste0("a: ", a, ", b: ", b))
       
-      output$diagram <- renderPlot({
+      output$progressionDiagram <- renderPlot({
         barplot(formattedData$amount, names.arg = formattedData$date)
         if (n > 1) 
         {
