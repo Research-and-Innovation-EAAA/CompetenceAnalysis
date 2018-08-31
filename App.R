@@ -102,28 +102,15 @@ ui <- fluidPage(
              tabPanel("Annonce Liste",
                       wellPanel(
                         fluidRow(
-                          column(4,
-                                 actionButton("updateAnnoncerButton", "Opdater Liste"),
-                                 selectInput(inputId = "annonceList",
-                                             label = "Annonce Liste",
-                                             selectize = FALSE,
-                                             size = 25,
-                                             choices = list()
-                            )
+                          actionButton("updateAnnoncerButton", "Opdater Liste"),
+                          selectInput(inputId = "annonceList",
+                                      label = "Annonce Liste",
+                                      selectize = FALSE,
+                                      size = 20,
+                                      choices = list(),
+                                      width = "100%"
                           ),
-                          column(8,
-                                 verbatimTextOutput(outputId = "annonceText")
-                                 # tabsetPanel(
-                                 #   tabPanel("Raw Text",
-                                 #            verbatimTextOutput(outputId = "annonceText")
-                                 #   ),
-                                 #   tabPanel("HTML Page",
-                                 #            htmlOutput(outputId = "annonceHTML")
-                                 #            
-                                 #   )
-                                 # )
-                                 
-                          )
+                          verbatimTextOutput(outputId = "annonceText")
                         )
                       )
              )
@@ -570,7 +557,7 @@ server <- function(input, output, session){
       stopifnot(is.object(con))
       
       
-      q1 <- 'select a._id from annonce a join annonce_kompetence ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where ('
+      q1 <- 'select a._id, a.title from annonce a join annonce_kompetence ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where ('
       q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
       ####REGION####
       q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
@@ -596,9 +583,15 @@ server <- function(input, output, session){
       annonceData <- dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10))
       dbDisconnect(con)
       
+      annonceListContents <- list()
+      
+      for (i in 1:nrow(annonceData)){
+        annonceListContents <- c(annonceListContents, paste0(annonceData[i,1], " || ", annonceData[i, 2]))
+      }
+      
       updateSelectInput(session,
                         inputId = "annonceList", 
-                        choices = annonceData[,1]
+                        choices = annonceListContents
       )
     }
   })
@@ -608,12 +601,13 @@ server <- function(input, output, session){
     con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
     stopifnot(is.object(con))
     
-    annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body, convert(body using utf8) as body from annonce where _id = ', input$annonceList))
+    id <- unlist(strsplit(input$annonceList, " "))[1]
+    
+    annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body, convert(body using utf8) as body from annonce where _id = ', id))
     
     dbDisconnect(con)
     
     output$annonceText <- renderText({annonceText[1,1]})
-    #output$annonceHTML <- renderUI({HTML(annonceText[1,2])})
   })
   ##########################################
   ##########################################
