@@ -98,6 +98,34 @@ ui <- fluidPage(
                         ),
                         plotOutput("progressionDiagram", height = 540)
                       )
+             ),
+             tabPanel("Annonce Liste",
+                      wellPanel(
+                        fluidRow(
+                          column(4,
+                                 actionButton("updateAnnoncerButton", "Opdater Liste"),
+                                 selectInput(inputId = "annonceList",
+                                             label = "Annonce Liste",
+                                             selectize = FALSE,
+                                             size = 25,
+                                             choices = list()
+                            )
+                          ),
+                          column(8,
+                                 verbatimTextOutput(outputId = "annonceText")
+                                 # tabsetPanel(
+                                 #   tabPanel("Raw Text",
+                                 #            verbatimTextOutput(outputId = "annonceText")
+                                 #   ),
+                                 #   tabPanel("HTML Page",
+                                 #            htmlOutput(outputId = "annonceHTML")
+                                 #            
+                                 #   )
+                                 # )
+                                 
+                          )
+                        )
+                      )
              )
            )
            
@@ -299,8 +327,6 @@ server <- function(input, output, session){
       con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
       stopifnot(is.object(con))
       
-      kompetenceData <- data.frame()
-      
       q1 <- 'select k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where ('
       q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
       ####REGION####
@@ -327,6 +353,9 @@ server <- function(input, output, session){
       kompetenceData <- dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10))
       
       dbDisconnect(con)
+      
+      # If i order the table in the correct order in the SQL query the 'Limit 30' option cuts off the biggest instead of the smallest.
+      # Which is why the table must be ordered after the query.
       kompetenceData <- kompetenceData[order(kompetenceData$amount, decreasing = FALSE),]
       
       output$kompetenceDiagram <- renderPlot({
@@ -521,8 +550,73 @@ server <- function(input, output, session){
       
     }
   })
-  #########################################
-  #########################################
+  ##########################################
+  ##########################################
+  ##########     Annonce List     ##########
+  ##########################################
+  
+  observeEvent(input$updateAnnoncerButton, {
+    if(length(kompetencer$sk) != 0){
+      matchIndexes <- list()
+      categoryMatrix <- as.matrix(fullCategoryData)
+      for (kompetence in kompetencer$sk){
+        matchIndexes <- c(matchIndexes, which(categoryMatrix[,1] == kompetence))
+      }
+      kompetenceIds <- list()
+      for (index in matchIndexes){
+        kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
+      }
+      con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+      stopifnot(is.object(con))
+      
+      
+      q1 <- 'select a._id from annonce a join annonce_kompetence ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where ('
+      q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
+      ####REGION####
+      q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
+      q4 <- input$regChoice            #region name
+      q5 <- '")'
+      if (q4 == "Alle Regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle Regioner'
+      ##############
+      q6 <- ' and a.timeStamp between "'
+      q7 <- format(input$dateRange[1]) #Start date
+      q8 <- '" and "'
+      q9 <- format(input$dateRange[2]) #End date
+      q10 <- '" group by a._id'
+      
+      for (i in 1:length(kompetenceIds)){
+        if (i < length(kompetenceIds)){
+          q2 <- paste0(q2, (paste0('k._id = ', kompetenceIds[i], ' or ')))
+        }
+        else{
+          q2 <- paste0(q2, (paste0('k._id = ', kompetenceIds[i], ')')))
+        }
+      }
+      
+      annonceData <- dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10))
+      dbDisconnect(con)
+      
+      updateSelectInput(session,
+                        inputId = "annonceList", 
+                        choices = annonceData[,1]
+      )
+    }
+  })
+  
+  
+  observeEvent(input$annonceList, {
+    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+    stopifnot(is.object(con))
+    
+    annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body, convert(body using utf8) as body from annonce where _id = ', input$annonceList))
+    
+    dbDisconnect(con)
+    
+    output$annonceText <- renderText({annonceText[1,1]})
+    #output$annonceHTML <- renderUI({HTML(annonceText[1,2])})
+  })
+  ##########################################
+  ##########################################
 }
 
 shinyApp(ui = ui, server = server)
