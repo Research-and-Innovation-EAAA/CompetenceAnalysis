@@ -439,8 +439,6 @@ server <- function(input, output, session){
                 missingPeriods <- currentPeriod - lastPeriod - 1
                 
                 for (j in (lastPeriod+1):(lastPeriod+missingPeriods)){
-                  # Assemble date, then add it
-                  # https://stackoverflow.com/questions/28467068/add-row-to-dataframe
                   if (j < 10){
                     df <- data.frame(paste0(year, "-0", j), 0)
                     names(df) <- c("date", "amount")
