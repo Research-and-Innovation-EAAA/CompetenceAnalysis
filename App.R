@@ -7,20 +7,39 @@ library(ggplot2)
 source('credentials.R')
 
 ui <- fluidPage(
-  fluidRow(style = "border-bottom: 2px solid black",
+  fluidRow(style = "margin-top: 5px;",
     column(4, img(src = "EAAA_Logo.jpg")),
-    column(8, titlePanel(title = "JOB ANNONCE ANALYSE", windowTitle = "Annonce Analyse"))
+    column(8, style = "margin-top: 15px", titlePanel(title = "JOBANNONCEANALYSE", windowTitle = "Annonce Analyse"))
   ),
-  fluidRow(
+  fluidRow(style = "border-bottom: 2px solid black; margin-top: 15px;"),
+  fluidRow(style = "margin-top: 15px;",
     column(6,
            wellPanel(
              fluidRow(
                column(6,
-                      textInput(inputId = "searchField", label = "Search Field")
+                      selectInput(inputId = "regChoice",
+                                  label = "Vælg region", 
+                                  choices = list("Alle Regioner", "storkoebenhavn", "nordsjaelland", "region-sjaelland", "fyn", "region-nordjylland", "region-midtjylland", "sydjylland", "bornholm", "skaane", "groenland", "faeroeerne", "udlandet"),
+                                  multiple = FALSE, 
+                                  width = "400px"
+                      )
+               ),
+               column(6,
+                      dateRangeInput('dateRange',
+                                     label = 'Periode: Ældste dato er 2018-05-20',
+                                     start = "2018-05-20", end = Sys.Date()
+                      )
+               )
+             )
+           ),
+           wellPanel(
+             fluidRow(
+               column(6,
+                      textInput(inputId = "searchField", label = "Søgefelt")
                ),
                column(6,
                       selectInput(inputId = "groupChoice",
-                                  label = "Kompetence grupper: ", 
+                                  label = "Kompetencegrupper: ", 
                                   choices = list("Alle Grupper", "ict", "ict2", "Core", "language", "multimedie", "transversal", "GartnerForecast", "undefined", "_", "NULL"),
                                   multiple = FALSE, 
                                   width = "400px"
@@ -31,7 +50,7 @@ ui <- fluidPage(
                fluidRow(
                  column(4,
                         selectInput(inputId = "availableCategories",
-                                    label = "Tilgængelige Kompetencer:",
+                                    label = "Tilgængelige kompetencer:",
                                     size = 20,
                                     selectize = FALSE,
                                     multiple = TRUE,
@@ -40,15 +59,15 @@ ui <- fluidPage(
                         )
                  ),
                  column(4, align = "center", style = "margin-top: 75px;",
-                        actionButton("addKat", "Tilføj Kategori >>", width = 150),
+                        actionButton("addKat", "Tilføj kategori >>", width = 150),
                         actionButton("add", "Tilføj >", width = 150),
                         actionButton("remove", "< Fjern", width = 150),
-                        actionButton("removeKat", "<< Fjern Kategori", width = 150)
+                        actionButton("removeKat", "<< Fjern kategori", width = 150)
                         
                  ),
                  column(4, 
                         selectInput(inputId = "selectedCategories",
-                                    label = "Valgte Kompetencer:",
+                                    label = "Valgte kompetencer:",
                                     size = 20,
                                     selectize = FALSE,
                                     multiple = TRUE,
@@ -63,48 +82,36 @@ ui <- fluidPage(
            
     ),
     column(6, 
-           wellPanel(
-             fluidRow(
-               column(6,
-                      selectInput(inputId = "regChoice",
-                                  label = "Vælg Region", 
-                                  choices = list("Alle Regioner", "storkoebenhavn", "nordsjaelland", "region-sjaelland", "fyn", "region-nordjylland", "region-midtjylland", "sydjylland", "bornholm", "skaane", "groenland", "faeroeerne", "udlandet"),
-                                  multiple = FALSE, 
-                                  width = "400px"
-                      )
-               ),
-               column(6,
-                      dateRangeInput('dateRange',
-                                     label = 'Dato Interval: Ældste dato er 2018-05-20',
-                                     start = "2018-05-20", end = Sys.Date()
-                      )
-               )
-             )
-           ),
            tabsetPanel(
-             tabPanel("Kompetence Sammenligning",
+             tabPanel("Kompetencesammenligning",
                       wellPanel(
-                        actionButton("kompetencePlotButton", "Opdater Diagram"),
+                        actionButton("kompetencePlotButton", "Opdater diagram"),
                         plotOutput("kompetenceDiagram", height = 620)
                       )
                     
              ),
              tabPanel("Progression",
                       wellPanel(
-                        actionButton("progressionPlotButton", "Opdater Diagram"),
-                        selectInput(inputId = "progressionDateFormat", 
-                                    label = "Dato Opdeling", 
-                                    choices = list("Uge", "Måned", "År")
+                        fluidRow(
+                          column(4, 
+                                 selectInput(inputId = "progressionDateFormat", 
+                                             label = "Periodeopdeling", 
+                                             choices = list("Uge", "Måned", "År")
+                                 )
+                          ),
+                          column(8, style = "margin-top: 25px;",
+                                 actionButton("progressionPlotButton", "Opdater diagram")
+                          )
                         ),
                         plotOutput("progressionDiagram", height = 540)
                       )
              ),
-             tabPanel("Annonce Liste",
+             tabPanel("Annonceliste",
                       wellPanel(
                         fluidRow(
-                          actionButton("updateAnnoncerButton", "Opdater Liste"),
+                          actionButton("updateAnnoncerButton", "Opdater liste"),
                           selectInput(inputId = "annonceList",
-                                      label = "Annonce Liste",
+                                      label = "",
                                       selectize = FALSE,
                                       size = 20,
                                       choices = list(),
