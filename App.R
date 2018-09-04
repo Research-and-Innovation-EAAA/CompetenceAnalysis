@@ -136,6 +136,32 @@ server <- function(input, output, session){
   fullCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id from kompetence order by prefferredLabel asc')
   dbDisconnect(con)
   
+  ##########     FUNCTIONS     ##########
+  
+  searchFieldEffects <- function(){
+    if (input$searchField != ""){
+      foundKompetencer <- list()
+      for (kompetence in kompetencer$ak){
+        if (grepl(toupper(input$searchField), toupper(kompetence), fixed = TRUE)){
+          foundKompetencer <- c(foundKompetencer, kompetence)
+        }
+      }
+      foundKompetencer <- setdiff(foundKompetencer, kompetencer$sk)
+      
+      updateSelectInput(session,
+                        inputId = "availableCategories",
+                        choices = foundKompetencer
+      )
+    }
+    else{
+      updateSelectInput(session,
+                        inputId = "availableCategories",
+                        choices = kompetencer$ak
+      )
+    }
+  }
+  
+  ######################################
   
   observeEvent(input$groupChoice, {
     q1 <- 'select prefferredLabel, _id from kompetence where grp="'
@@ -161,6 +187,7 @@ server <- function(input, output, session){
                       inputId = "availableCategories",
                       choices = kompetencer$ak
     )
+    searchFieldEffects()
   })
   
   ########################################
@@ -180,6 +207,7 @@ server <- function(input, output, session){
                         inputId = "availableCategories", 
                         choices = kompetencer$ak
       )
+      searchFieldEffects()
     }
   })
   observeEvent(input$remove, {
@@ -195,6 +223,7 @@ server <- function(input, output, session){
                         inputId = "availableCategories", 
                         choices = kompetencer$ak
       )
+      searchFieldEffects()
     }
   })
   observeEvent(input$addKat, {
@@ -243,6 +272,7 @@ server <- function(input, output, session){
                         inputId = "availableCategories", 
                         choices = kompetencer$ak
       )
+      searchFieldEffects()
     }
   })
   observeEvent(input$removeKat, {
@@ -279,29 +309,13 @@ server <- function(input, output, session){
                         inputId = "availableCategories", 
                         choices = kompetencer$ak
       )
+      searchFieldEffects()
     }
   })
   #######################################
   #######################################
   observeEvent(input$searchField, {
-    if (input$searchField != ""){
-      foundKompetencer <- list()
-      for (kompetence in kompetencer$ak){
-        if (grepl(toupper(input$searchField), toupper(kompetence), fixed = TRUE)){
-          foundKompetencer <- c(foundKompetencer, kompetence)
-        }
-      }
-      updateSelectInput(session,
-                        inputId = "availableCategories",
-                        choices = foundKompetencer
-      )
-    }
-    else{
-      updateSelectInput(session,
-                        inputId = "availableCategories",
-                        choices = kompetencer$ak
-      )
-    }
+    searchFieldEffects()
   })
   
   #########################################
