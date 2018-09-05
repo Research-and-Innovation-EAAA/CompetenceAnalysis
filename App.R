@@ -117,7 +117,7 @@ ui <- fluidPage(
                                       choices = list(),
                                       width = "100%"
                           ),
-                          verbatimTextOutput(outputId = "annonceText")
+                          textOutput(outputId = "annonceText")
                         )
                       )
              )
@@ -134,6 +134,7 @@ server <- function(input, output, session){
   con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
   stopifnot(is.object(con))
   fullCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id from kompetence order by prefferredLabel asc')
+  
   dbDisconnect(con)
   
   ##########     FUNCTIONS     ##########
