@@ -67,7 +67,7 @@ ui <- fluidPage(
                         actionButton("add", "Tilføj >", width = 150),
                         actionButton("remove", "< Fjern", width = 150),
                         actionButton("removeKat", "<< Fjern kategori", width = 150),
-                        actionButton("removeAll", "<<< Fjern Alle", width = 150)
+                        actionButton("removeAll", "<<< Fjern alle", width = 150)
                         
                  ),
                  column(4, 
