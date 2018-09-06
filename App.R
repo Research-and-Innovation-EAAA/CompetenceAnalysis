@@ -85,7 +85,14 @@ ui <- fluidPage(
            tabsetPanel(
              tabPanel("Kompetencesammenligning",
                       wellPanel(
-                        actionButton("kompetencePlotButton", "Opdater diagram"),
+                        fluidRow(
+                          column(6,
+                                 actionButton("kompetencePlotButton", "Opdater diagram")
+                          ),
+                          column(6,
+                                 textOutput(outputId = "kompetenceErrorField")
+                          )
+                        ),
                         plotOutput("kompetenceDiagram", height = 620)
                       )
                     
@@ -103,6 +110,7 @@ ui <- fluidPage(
                                  actionButton("progressionPlotButton", "Opdater diagram")
                           )
                         ),
+                        textOutput(outputId = "progressionErrorField"),
                         plotOutput("progressionDiagram", height = 540)
                       )
              ),
@@ -110,6 +118,7 @@ ui <- fluidPage(
                       wellPanel(
                         fluidRow(
                           actionButton("updateAnnoncerButton", "Opdater liste"),
+                          textOutput(outputId = "annonceErrorField"),
                           selectInput(inputId = "annonceList",
                                       label = "",
                                       selectize = FALSE,
@@ -122,7 +131,6 @@ ui <- fluidPage(
                       )
              )
            )
-           
     )
   )
                 
@@ -324,6 +332,7 @@ server <- function(input, output, session){
   #########################################
   observeEvent(input$kompetencePlotButton, {
     if(length(kompetencer$sk) != 0){
+      output$kompetenceErrorField <- renderText("Arbejder, Vent Venligst.")
       matchIndexes <- list()
       categoryMatrix <- as.matrix(fullCategoryData)
       for (kompetence in kompetencer$sk){
@@ -363,24 +372,32 @@ server <- function(input, output, session){
       
       dbDisconnect(con)
       
-      # If i order the table in the correct order in the SQL query the 'Limit 30' option cuts off the biggest instead of the smallest.
-      # Which is why the table must be ordered after the query.
-      kompetenceData <- kompetenceData[order(kompetenceData$amount, decreasing = FALSE),]
-      
-      output$kompetenceDiagram <- renderPlot({
-        par(mar = c(5,15,4,2) + 0.1)
-        barplot(kompetenceData$amount, 
-                main="Antal jobopslag for valgt region, tidsramme & kompetencer ", 
-                names.arg = kompetenceData$prefferredLabel,
-                las = 2,
-                horiz = TRUE
-        )
-      })
+      if (dim(kompetenceData)[1] != 0) {
+        # If i order the table in the correct order in the SQL query the 'Limit 30' option cuts off the biggest instead of the smallest.
+        # Which is why the table must be ordered after the query.
+        kompetenceData <- kompetenceData[order(kompetenceData$amount, decreasing = FALSE),]
+        
+        output$kompetenceDiagram <- renderPlot({
+          par(mar = c(5,15,4,2) + 0.1)
+          barplot(kompetenceData$amount, 
+                  main="Antal jobopslag for valgt region, tidsramme & kompetencer ", 
+                  names.arg = kompetenceData$prefferredLabel,
+                  las = 2,
+                  horiz = TRUE
+          )
+        })
+        output$kompetenceErrorField <- renderText("")
+      }
+      else{
+        output$kompetenceErrorField <- renderText("Ingen annoncer fundet.")
+        output$kompetenceDiagram <- NULL
+      }
     }
   })
   
   observeEvent(input$progressionPlotButton, {
     if(length(kompetencer$sk) != 0){
+      output$progressionErrorField <- renderText("Arbejder, vent venligst.")
       matchIndexes <- list()
       categoryMatrix <- as.matrix(fullCategoryData)
       for (kompetence in kompetencer$sk){
@@ -438,122 +455,129 @@ server <- function(input, output, session){
       
       lastDate <- ""
       n <- nrow(formattedData)
-      print(n)
-      for (i in 1:n){
-        if (lastDate != ""){
-          
-          year <- as.numeric(substr(formattedData$date[i], 1, 4))
-          prevYear <- as.numeric(substr(lastDate, 1, 4))
-          yearDif <- year - prevYear
-          
-          if (format != "%Y"){ #Diagram split into weeks or months
-            if (yearDif == 0){
-              lastPeriod <- as.numeric(strsplit(lastDate, "-")[[1]][2])
-              currentPeriod <- as.numeric(strsplit(formattedData$date[i], "-")[[1]][2])
-              if (lastPeriod + 1 != currentPeriod){
-                missingPeriods <- currentPeriod - lastPeriod - 1
-                
-                for (j in (lastPeriod+1):(lastPeriod+missingPeriods)){
-                  if (j < 10){
-                    df <- data.frame(paste0(year, "-0", j), 0)
-                    names(df) <- c("date", "amount")
-                    formattedData <- rbind(formattedData, df)
+      if (n > 0){ ##### Check added to prevent crash when there's no job advertisements to be found
+        for (i in 1:n){
+          if (lastDate != ""){
+            
+            year <- as.numeric(substr(formattedData$date[i], 1, 4))
+            prevYear <- as.numeric(substr(lastDate, 1, 4))
+            yearDif <- year - prevYear
+            
+            if (format != "%Y"){ #Diagram split into weeks or months
+              if (yearDif == 0){
+                lastPeriod <- as.numeric(strsplit(lastDate, "-")[[1]][2])
+                currentPeriod <- as.numeric(strsplit(formattedData$date[i], "-")[[1]][2])
+                if (lastPeriod + 1 != currentPeriod){
+                  missingPeriods <- currentPeriod - lastPeriod - 1
+                  
+                  for (j in (lastPeriod+1):(lastPeriod+missingPeriods)){
+                    if (j < 10){
+                      df <- data.frame(paste0(year, "-0", j), 0)
+                      names(df) <- c("date", "amount")
+                      formattedData <- rbind(formattedData, df)
+                    }
+                    else{
+                      df <- data.frame(paste0(year, "-", j), 0)
+                      names(df) <- c("date", "amount")
+                      formattedData <- rbind(formattedData, df)
+                    }
+                  }
+                }
+              }
+              else{
+                for (j in prevYear:year){
+                  lastPeriod <- 1;
+                  if (j == prevYear){
+                    lastPeriod <- as.numeric(substr(x = lastDate, length(lastDate)-1, length(lastDate)+1))
+                  }
+                  if (j < year){
+                    yearLength <- 52
+                    if (format == "%Y-%m"){
+                      yearLength <- 12
+                    }
+                    for (u in lastPeriod:yearLength){
+                      if (u < 10){
+                        df <- data.frame(paste0(j, "-0", u), 0)
+                        names(df) <- c("date", "amount")
+                        formattedData <- rbind(formattedData, df)
+                      }
+                      else{
+                        df <- data.frame(paste0(j, "-", u), 0)
+                        names(df) <- c("date", "amount")
+                        formattedData <- rbind(formattedData, df)
+                      }
+                    }
                   }
                   else{
-                    df <- data.frame(paste0(year, "-", j), 0)
-                    names(df) <- c("date", "amount")
-                    formattedData <- rbind(formattedData, df)
-                  }
-                }
-              }
-            }
-            else{
-              for (j in prevYear:year){
-                lastPeriod <- 1;
-                if (j == prevYear){
-                  lastPeriod <- as.numeric(substr(x = lastDate, length(lastDate)-1, length(lastDate)+1))
-                }
-                if (j < year){
-                  yearLength <- 52
-                  if (format == "%Y-%m"){
-                    yearLength <- 12
-                  }
-                  for (u in lastPeriod:yearLength){
-                    if (u < 10){
-                      df <- data.frame(paste0(j, "-0", u), 0)
-                      names(df) <- c("date", "amount")
-                      formattedData <- rbind(formattedData, df)
-                    }
-                    else{
-                      df <- data.frame(paste0(j, "-", u), 0)
-                      names(df) <- c("date", "amount")
-                      formattedData <- rbind(formattedData, df)
-                    }
-                  }
-                }
-                else{
-                  currentPeriod <- as.numeric(substr(x = formattedData$date[i], length(formattedData$date[i])-1, length(formattedData$date[i])+1))
-                  for (u in lastPeriod:currentPeriod-1){
-                    if (u < 10){
-                      df <- data.frame(paste0(j, "-0", u), 0)
-                      names(df) <- c("date", "amount")
-                      formattedData <- rbind(formattedData, df)
-                    }
-                    else{
-                      df <- data.frame(paste0(j, "-", u), 0)
-                      names(df) <- c("date", "amount")
-                      formattedData <- rbind(formattedData, df)
+                    currentPeriod <- as.numeric(substr(x = formattedData$date[i], length(formattedData$date[i])-1, length(formattedData$date[i])+1))
+                    for (u in lastPeriod:currentPeriod-1){
+                      if (u < 10){
+                        df <- data.frame(paste0(j, "-0", u), 0)
+                        names(df) <- c("date", "amount")
+                        formattedData <- rbind(formattedData, df)
+                      }
+                      else{
+                        df <- data.frame(paste0(j, "-", u), 0)
+                        names(df) <- c("date", "amount")
+                        formattedData <- rbind(formattedData, df)
+                      }
                     }
                   }
                 }
               }
             }
-          }
-          else{ # Diagram split into years
-            for (j in (prevYear+1):(year-1)){
-              df <- data.frame(toString(j), 0)
-              names(df) <- c("date", "amount")
-              formattedData <- rbind(formattedData, df)
+            else{ # Diagram split into years
+              for (j in (prevYear+1):(year-1)){
+                df <- data.frame(toString(j), 0)
+                names(df) <- c("date", "amount")
+                formattedData <- rbind(formattedData, df)
+              }
             }
           }
+          lastDate <- formattedData$date[i]
         }
-        lastDate <- formattedData$date[i]
-      }
-      
-      formattedData <- formattedData[order(formattedData$date, decreasing = FALSE),]
-      
-      x <- 0
-      y <- 0
-      xy <- 0
-      x2 <- 0
-      y2 <- 0
-      n <- nrow(formattedData)
-      for (i in 1:n){
-        x <- x + i * xInc
-        y <- y + formattedData$amount[i]
-        xy <- xy + ((i * xInc) * formattedData$amount[i])
-        x2 <- x2 + (i * xInc)^2
-        y2 <- y2 + formattedData$amount[i]^2
         
-        lastDate <- formattedData$date[i]
-      }
-      
-      #print(paste0("x: ", x, ", y: ", y, ", xy: ", xy, ", x2: ", x2, ", y2: ", y2, ", n: ", n ))
-      
-      a <- (y * x2 - x * xy) / (n * x2 - x ^ 2)
-      b <- (n * xy - x * y) / (n * x2 - x ^ 2)
-      
-      #print (paste0("a: ", a, ", b: ", b))
-      
-      output$progressionDiagram <- renderPlot({
-        barplot(formattedData$amount, names.arg = formattedData$date)
-        if (n > 1) 
-        {
-          #As of writing this code there is only data from about 4 months, so less than a year.
-          #If n is 1 it will result in an error when doing regression, and it is currently 1 when choosing year.
-          abline(a=a, b=b, col = "red", lwd = 3)
+        formattedData <- formattedData[order(formattedData$date, decreasing = FALSE),]
+        
+        x <- 0
+        y <- 0
+        xy <- 0
+        x2 <- 0
+        y2 <- 0
+        n <- nrow(formattedData)
+        for (i in 1:n){
+          x <- x + i * xInc
+          y <- y + formattedData$amount[i]
+          xy <- xy + ((i * xInc) * formattedData$amount[i])
+          x2 <- x2 + (i * xInc)^2
+          y2 <- y2 + formattedData$amount[i]^2
+          
+          lastDate <- formattedData$date[i]
         }
-      })
+        
+        #print(paste0("x: ", x, ", y: ", y, ", xy: ", xy, ", x2: ", x2, ", y2: ", y2, ", n: ", n ))
+        
+        a <- (y * x2 - x * xy) / (n * x2 - x ^ 2)
+        b <- (n * xy - x * y) / (n * x2 - x ^ 2)
+        
+        #print (paste0("a: ", a, ", b: ", b))
+        
+        output$progressionDiagram <- renderPlot({
+          barplot(formattedData$amount, names.arg = formattedData$date)
+          if (n > 1) 
+          {
+            #As of writing this code there is only data from about 4 months, so less than a year.
+            #If n is 1 it will result in an error when doing regression, and it is currently 1 when choosing year.
+            abline(a=a, b=b, col = "red", lwd = 3)
+          }
+        })
+        
+        output$progressionErrorField <- renderText("")
+      }
+      else{
+        output$progressionDiagram <- NULL
+        output$progressionErrorField <- renderText("Ingen annoncer fundet.")
+      }
       
     }
   })
@@ -564,6 +588,7 @@ server <- function(input, output, session){
   
   observeEvent(input$updateAnnoncerButton, {
     if(length(kompetencer$sk) != 0){
+      output$annonceErrorField <- renderText("Arbejder, vent venligst.")
       matchIndexes <- list()
       categoryMatrix <- as.matrix(fullCategoryData)
       for (kompetence in kompetencer$sk){
@@ -604,15 +629,24 @@ server <- function(input, output, session){
       dbDisconnect(con)
       
       annonceListContents <- list()
-      
-      for (i in 1:nrow(annonceData)){
-        annonceListContents <- c(annonceListContents, paste0(annonceData[i,1], " || ", annonceData[i, 2]))
+      if (dim(annonceData)[1] != 0){
+        for (i in 1:nrow(annonceData)){
+          annonceListContents <- c(annonceListContents, paste0(annonceData[i,1], " || ", annonceData[i, 2]))
+        }
+        
+        updateSelectInput(session,
+                          inputId = "annonceList", 
+                          choices = annonceListContents
+        )
+        output$annonceErrorField <- renderText("")
       }
-      
-      updateSelectInput(session,
-                        inputId = "annonceList", 
-                        choices = annonceListContents
-      )
+      else{
+        output$annonceErrorField <- renderText("Ingen annoncer fundet.")
+        updateSelectInput(session,
+                          inputId = "annonceList", 
+                          choices = list()
+        )
+      }
     }
   })
   
