@@ -62,12 +62,12 @@ ui <- fluidPage(
                         )
                  ),
                  column(4, align = "center", style = "margin-top: 75px;",
-                        #actionButton("addAll", "Tilføj alle >>>", width = 150),
+                        actionButton("addAll", "Tilføj alle >>>", width = 150),
                         actionButton("addKat", "Tilføj kategori >>", width = 150),
                         actionButton("add", "Tilføj >", width = 150),
                         actionButton("remove", "< Fjern", width = 150),
-                        actionButton("removeKat", "<< Fjern kategori", width = 150)#,
-                        #actionButton("removeAll", "<<< Fjern Alle", width = 150)
+                        actionButton("removeKat", "<< Fjern kategori", width = 150),
+                        actionButton("removeAll", "<<< Fjern Alle", width = 150)
                         
                  ),
                  column(4, 
@@ -310,6 +310,45 @@ server <- function(input, output, session){
       updateAnnonceList()
     }
   })
+  
+  observeEvent(input$addAll, {
+    print(kompetencer$sk)
+    kompetencer$sk <- c(kompetencer$sk, kompetencer$ak)
+    kompetencer$ak <- list()
+    print(kompetencer$sk)
+    
+    updateSelectInput(session,
+                      inputId = "selectedCategories", 
+                      choices = kompetencer$sk
+    )
+    updateSelectInput(session,
+                      inputId = "availableCategories", 
+                      choices = kompetencer$ak
+    )
+    searchFieldEffects()
+    updateKompetenceDiagram()
+    updateProgressionDiagram()
+    updateAnnonceList()
+  })
+  
+  observeEvent(input$removeAll, {
+    kompetencer$ak <- c(kompetencer$ak, kompetencer$sk)
+    kompetencer$sk <- list()
+    
+    updateSelectInput(session,
+                      inputId = "selectedCategories", 
+                      choices = kompetencer$sk
+    )
+    updateSelectInput(session,
+                      inputId = "availableCategories", 
+                      choices = kompetencer$ak
+    )
+    searchFieldEffects()
+    updateKompetenceDiagram()
+    updateProgressionDiagram()
+    updateAnnonceList()
+  })
+  
   #######################################
   #######################################
   observeEvent(input$searchField, {
