@@ -9,7 +9,10 @@ source('credentials.R')
 ui <- fluidPage(
   fluidRow(style = "margin-top: 5px;",
     column(4, img(src = "EAAA_Logo.jpg")),
-    column(8, style = "margin-top: 15px", titlePanel(title = "JOBANNONCEANALYSE", windowTitle = "Annonce Analyse"))
+    column(8, style = "margin-top: 15px", 
+           titlePanel(title = "KOMPETENCEANALYSE", windowTitle = "Annonce Analyse"),
+           div(style = "margin-left: 100px;", textOutput(outputId = "annonceCountField"))
+    )
   ),
   fluidRow(style = "border-bottom: 2px solid black; margin-top: 15px;"),
   fluidRow(style = "margin-top: 15px;",
@@ -142,6 +145,8 @@ server <- function(input, output, session){
   con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
   stopifnot(is.object(con))
   fullCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id from kompetence order by prefferredLabel asc')
+  annonceCount <- dbGetQuery(con, 'select count(*) from annonce')[1,1]
+  output$annonceCountField <- renderText(paste0("(", annonceCount, " Annoncer)"))
   
   dbDisconnect(con)
   
