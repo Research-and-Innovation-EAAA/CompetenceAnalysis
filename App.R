@@ -11,10 +11,10 @@ ui <- fluidPage(
     column(4, img(src = "EAAA_Logo.jpg")),
     column(8, style = "margin-top: 15px", 
            titlePanel(title = "KOMPETENCEANALYSE", windowTitle = "Annonce Analyse"),
-           div(style = "margin-left: 100px;", textOutput(outputId = "annonceCountField"))
+           div(style = "margin-left: 90px; font-size: 20px;", textOutput(outputId = "annonceCountField"))
     )
   ),
-  fluidRow(style = "border-bottom: 2px solid black; margin-top: 15px;"),
+  fluidRow(style = "border-bottom: 2px solid black; margin-top: 10px;"),
   fluidRow(style = "margin-top: 15px;",
     column(6,
            wellPanel(
