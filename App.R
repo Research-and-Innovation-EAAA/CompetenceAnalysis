@@ -62,10 +62,12 @@ ui <- fluidPage(
                         )
                  ),
                  column(4, align = "center", style = "margin-top: 75px;",
+                        #actionButton("addAll", "Tilføj alle >>>", width = 150),
                         actionButton("addKat", "Tilføj kategori >>", width = 150),
                         actionButton("add", "Tilføj >", width = 150),
                         actionButton("remove", "< Fjern", width = 150),
-                        actionButton("removeKat", "<< Fjern kategori", width = 150)
+                        actionButton("removeKat", "<< Fjern kategori", width = 150)#,
+                        #actionButton("removeAll", "<<< Fjern Alle", width = 150)
                         
                  ),
                  column(4, 
@@ -88,30 +90,16 @@ ui <- fluidPage(
            tabsetPanel(
              tabPanel("Kompetencesammenligning",
                       wellPanel(
-                        fluidRow(
-                          column(6,
-                                 actionButton("kompetencePlotButton", "Opdater diagram")
-                          ),
-                          column(6,
-                                 textOutput(outputId = "kompetenceErrorField")
-                          )
-                        ),
+                        textOutput(outputId = "kompetenceErrorField"),
                         plotOutput("kompetenceDiagram", height = 620)
                       )
                     
              ),
              tabPanel("Progression",
                       wellPanel(
-                        fluidRow(
-                          column(4, 
-                                 selectInput(inputId = "progressionDateFormat", 
-                                             label = "Periodeopdeling", 
-                                             choices = list("Uge", "Måned", "År")
-                                 )
-                          ),
-                          column(8, style = "margin-top: 25px;",
-                                 actionButton("progressionPlotButton", "Opdater diagram")
-                          )
+                        selectInput(inputId = "progressionDateFormat", 
+                                    label = "Periodeopdeling", 
+                                    choices = list("Uge", "Måned", "År")
                         ),
                         textOutput(outputId = "progressionErrorField"),
                         plotOutput("progressionDiagram", height = 540)
@@ -120,7 +108,6 @@ ui <- fluidPage(
              tabPanel("Annonceliste",
                       wellPanel(
                         fluidRow(
-                          actionButton("updateAnnoncerButton", "Opdater liste"),
                           textOutput(outputId = "annonceErrorField"),
                           selectInput(inputId = "annonceList",
                                       label = "",
@@ -150,33 +137,6 @@ server <- function(input, output, session){
   
   dbDisconnect(con)
   
-  ##########     FUNCTIONS     ##########
-  
-  searchFieldEffects <- function(){
-    if (input$searchField != ""){
-      foundKompetencer <- list()
-      for (kompetence in kompetencer$ak){
-        if (grepl(toupper(input$searchField), toupper(kompetence), fixed = TRUE)){
-          foundKompetencer <- c(foundKompetencer, kompetence)
-        }
-      }
-      foundKompetencer <- setdiff(foundKompetencer, kompetencer$sk)
-      
-      updateSelectInput(session,
-                        inputId = "availableCategories",
-                        choices = foundKompetencer
-      )
-    }
-    else{
-      updateSelectInput(session,
-                        inputId = "availableCategories",
-                        choices = kompetencer$ak
-      )
-    }
-  }
-  
-  ######################################
-  
   observeEvent(input$groupChoice, {
     q1 <- 'select prefferredLabel, _id from kompetence where grp="'
     q2 <- input$groupChoice
@@ -204,6 +164,18 @@ server <- function(input, output, session){
     searchFieldEffects()
   })
   
+  observeEvent(input$dateRange, {
+    updateKompetenceDiagram()
+    updateProgressionDiagram()
+    updateAnnonceList()
+  })
+  
+  observeEvent(input$regChoice, {
+    updateKompetenceDiagram()
+    updateProgressionDiagram()
+    updateAnnonceList()
+  })
+  
   ########################################
   #####     ADD/REMOVE OBSERVERS     #####
   ########################################
@@ -222,6 +194,9 @@ server <- function(input, output, session){
                         choices = kompetencer$ak
       )
       searchFieldEffects()
+      updateKompetenceDiagram()
+      updateProgressionDiagram()
+      updateAnnonceList()
     }
   })
   observeEvent(input$remove, {
@@ -238,6 +213,9 @@ server <- function(input, output, session){
                         choices = kompetencer$ak
       )
       searchFieldEffects()
+      updateKompetenceDiagram()
+      updateProgressionDiagram()
+      updateAnnonceList()
     }
   })
   observeEvent(input$addKat, {
@@ -287,6 +265,9 @@ server <- function(input, output, session){
                         choices = kompetencer$ak
       )
       searchFieldEffects()
+      updateKompetenceDiagram()
+      updateProgressionDiagram()
+      updateAnnonceList()
     }
   })
   observeEvent(input$removeKat, {
@@ -324,6 +305,9 @@ server <- function(input, output, session){
                         choices = kompetencer$ak
       )
       searchFieldEffects()
+      updateKompetenceDiagram()
+      updateProgressionDiagram()
+      updateAnnonceList()
     }
   })
   #######################################
@@ -332,10 +316,49 @@ server <- function(input, output, session){
     searchFieldEffects()
   })
   
-  #########################################
-  #####     PLOT BUTTON OBSERVERS     #####
-  #########################################
-  observeEvent(input$kompetencePlotButton, {
+  observeEvent(input$progressionDateFormat,{
+    updateProgressionDiagram()
+  })
+  
+  observeEvent(input$annonceList, {
+    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+    stopifnot(is.object(con))
+    
+    id <- unlist(strsplit(input$annonceList, " "))[1]
+    
+    annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body, convert(body using utf8) as body from annonce where _id = ', id))
+    
+    dbDisconnect(con)
+    
+    output$annonceText <- renderText({annonceText[1,1]})
+  })
+  
+  ############################################################     FUNCTIONS     ############################################################
+  
+  searchFieldEffects <- function(){
+    if (input$searchField != ""){
+      foundKompetencer <- list()
+      for (kompetence in kompetencer$ak){
+        if (grepl(toupper(input$searchField), toupper(kompetence), fixed = TRUE)){
+          foundKompetencer <- c(foundKompetencer, kompetence)
+        }
+      }
+      foundKompetencer <- setdiff(foundKompetencer, kompetencer$sk)
+      
+      updateSelectInput(session,
+                        inputId = "availableCategories",
+                        choices = foundKompetencer
+      )
+    }
+    else{
+      updateSelectInput(session,
+                        inputId = "availableCategories",
+                        choices = kompetencer$ak
+      )
+    }
+  }
+  
+  updateKompetenceDiagram <- function(){
     if(length(kompetencer$sk) != 0){
       output$kompetenceErrorField <- renderText("Arbejder, Vent Venligst.")
       matchIndexes <- list()
@@ -398,9 +421,13 @@ server <- function(input, output, session){
         output$kompetenceDiagram <- NULL
       }
     }
-  })
+    else{
+      output$kompetenceErrorField <- renderText("")
+      output$kompetenceDiagram <- NULL
+    }
+  }
   
-  observeEvent(input$progressionPlotButton, {
+  updateProgressionDiagram <- function(){
     if(length(kompetencer$sk) != 0){
       output$progressionErrorField <- renderText("Arbejder, vent venligst.")
       matchIndexes <- list()
@@ -583,15 +610,14 @@ server <- function(input, output, session){
         output$progressionDiagram <- NULL
         output$progressionErrorField <- renderText("Ingen annoncer fundet.")
       }
-      
     }
-  })
-  ##########################################
-  ##########################################
-  ##########     Annonce List     ##########
-  ##########################################
+    else{
+      output$progressionErrorField <- renderText("")
+      output$progressionDiagram <- NULL
+    }
+  }
   
-  observeEvent(input$updateAnnoncerButton, {
+  updateAnnonceList <- function(){
     if(length(kompetencer$sk) != 0){
       output$annonceErrorField <- renderText("Arbejder, vent venligst.")
       matchIndexes <- list()
@@ -653,23 +679,17 @@ server <- function(input, output, session){
         )
       }
     }
-  })
+    else{
+      output$annonceErrorField <- renderText("")
+      updateSelectInput(session,
+                        inputId = "annonceList", 
+                        choices = list()
+      )
+    }
+  }
   
+  ############################################################################################################################################
   
-  observeEvent(input$annonceList, {
-    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
-    stopifnot(is.object(con))
-    
-    id <- unlist(strsplit(input$annonceList, " "))[1]
-    
-    annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body, convert(body using utf8) as body from annonce where _id = ', id))
-    
-    dbDisconnect(con)
-    
-    output$annonceText <- renderText({annonceText[1,1]})
-  })
-  ##########################################
-  ##########################################
 }
 
 shinyApp(ui = ui, server = server)
