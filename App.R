@@ -3,6 +3,7 @@ library(RMariaDB)
 library(shiny)
 library(dplyr)
 library(ggplot2)
+library(shinycssloaders)
 
 source('credentials.R')
 
@@ -82,27 +83,25 @@ ui <- fluidPage(
                  )
                )
              )
-             
            )
-           
     ),
     column(6, 
-           tabsetPanel(
+           tabsetPanel(id = "outputPanel",
              tabPanel("Kompetencesammenligning",
                       wellPanel(
                         textOutput(outputId = "kompetenceErrorField"),
-                        plotOutput("kompetenceDiagram", height = 620)
+                        plotOutput("kompetenceDiagram", height = 620) %>% withSpinner(color="#0dc5c1")
                       )
                     
              ),
-             tabPanel("Progression",
+             tabPanel("Progression", 
                       wellPanel(
                         selectInput(inputId = "progressionDateFormat", 
                                     label = "Periodeopdeling", 
                                     choices = list("Uge", "Måned", "År")
                         ),
                         textOutput(outputId = "progressionErrorField"),
-                        plotOutput("progressionDiagram", height = 540)
+                        plotOutput("progressionDiagram", height = 540) %>% withSpinner(color="#0dc5c1")
                       )
              ),
              tabPanel("Annonceliste",
@@ -123,11 +122,11 @@ ui <- fluidPage(
            )
     )
   )
-                
 )
 
 server <- function(input, output, session){
   kompetencer <- reactiveValues(ak = NULL, sk = list())
+  current <- reactiveValues(tab = 1)
   
   con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
   stopifnot(is.object(con))
@@ -138,42 +137,29 @@ server <- function(input, output, session){
   dbDisconnect(con)
   
   observeEvent(input$groupChoice, {
-    q1 <- 'select prefferredLabel, _id from kompetence where grp="'
-    q2 <- input$groupChoice
-    q3 <- '" order by prefferredLabel asc'
-    
-    if      (q2 == "_"){q2 <- ""} #Can't put empty string in selectInput, so _ is used to represent the empty string group.
-    else if (q2 == "NULL"){q1 <- 'select prefferredLabel, _id from kompetence where grp is '; q3 <- ' order by prefferredLabel asc'}
-    
-    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
-    stopifnot(is.object(con))
-    
-    if (q2 == "Alle Grupper"){
-      availableCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id from kompetence order by prefferredLabel asc')
-    }
-    else{
-      availableCategoryData <- dbGetQuery(con, paste0(q1, q2, q3))
-    }
-    dbDisconnect(con)
-    kompetencer$ak <- as.matrix(availableCategoryData)[,1]
-    
-    updateSelectInput(session,
-                      inputId = "availableCategories",
-                      choices = kompetencer$ak
-    )
+    groupUpdateEffects()
     searchFieldEffects()
   })
   
   observeEvent(input$dateRange, {
-    updateKompetenceDiagram()
-    updateProgressionDiagram()
-    updateAnnonceList()
+    updateCurrentTab()
   })
   
   observeEvent(input$regChoice, {
-    updateKompetenceDiagram()
-    updateProgressionDiagram()
-    updateAnnonceList()
+    updateCurrentTab()
+  })
+  
+  observeEvent(input$outputPanel, {
+    if (input$outputPanel == "Kompetencesammenligning"){
+      current$tab <- 1
+    }
+    else if (input$outputPanel == "Progression"){
+      current$tab <- 2
+    }
+    else if (input$outputPanel == "Annonceliste"){
+      current$tab <- 3
+    }
+    updateCurrentTab()
   })
   
   ########################################
@@ -194,9 +180,7 @@ server <- function(input, output, session){
                         choices = kompetencer$ak
       )
       searchFieldEffects()
-      updateKompetenceDiagram()
-      updateProgressionDiagram()
-      updateAnnonceList()
+      updateCurrentTab()
     }
   })
   observeEvent(input$remove, {
@@ -213,9 +197,7 @@ server <- function(input, output, session){
                         choices = kompetencer$ak
       )
       searchFieldEffects()
-      updateKompetenceDiagram()
-      updateProgressionDiagram()
-      updateAnnonceList()
+      updateCurrentTab()
     }
   })
   observeEvent(input$addKat, {
@@ -265,11 +247,10 @@ server <- function(input, output, session){
                         choices = kompetencer$ak
       )
       searchFieldEffects()
-      updateKompetenceDiagram()
-      updateProgressionDiagram()
-      updateAnnonceList()
+      updateCurrentTab()
     }
   })
+  
   observeEvent(input$removeKat, {
     if (!is.null(input$selectedCategories)){
       done <- FALSE
@@ -305,30 +286,30 @@ server <- function(input, output, session){
                         choices = kompetencer$ak
       )
       searchFieldEffects()
-      updateKompetenceDiagram()
-      updateProgressionDiagram()
-      updateAnnonceList()
+      updateCurrentTab()
     }
   })
   
   observeEvent(input$addAll, {
-    print(kompetencer$sk)
-    kompetencer$sk <- c(kompetencer$sk, kompetencer$ak)
-    kompetencer$ak <- list()
-    print(kompetencer$sk)
+    if (input$searchField == ""){
+      kompetencer$sk <- c(kompetencer$sk, kompetencer$ak)
+      
+    }
+    else{
+      kompetencer$sk <- c(kompetencer$sk, kompetencer$ak)
+    }
     
-    updateSelectInput(session,
-                      inputId = "selectedCategories", 
-                      choices = kompetencer$sk
-    )
+    kompetencer$ak <- setdiff(kompetencer$ak, kompetencer$sk)
+    
     updateSelectInput(session,
                       inputId = "availableCategories", 
                       choices = kompetencer$ak
     )
-    searchFieldEffects()
-    updateKompetenceDiagram()
-    updateProgressionDiagram()
-    updateAnnonceList()
+    updateSelectInput(session,
+                      inputId = "selectedCategories", 
+                      choices = kompetencer$sk
+    )
+    updateCurrentTab()
   })
   
   observeEvent(input$removeAll, {
@@ -344,9 +325,7 @@ server <- function(input, output, session){
                       choices = kompetencer$ak
     )
     searchFieldEffects()
-    updateKompetenceDiagram()
-    updateProgressionDiagram()
-    updateAnnonceList()
+    updateCurrentTab()
   })
   
   #######################################
@@ -365,7 +344,7 @@ server <- function(input, output, session){
     
     id <- unlist(strsplit(input$annonceList, " "))[1]
     
-    annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body, convert(body using utf8) as body from annonce where _id = ', id))
+    annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body from annonce where _id = ', id))
     
     dbDisconnect(con)
     
@@ -373,6 +352,18 @@ server <- function(input, output, session){
   })
   
   ############################################################     FUNCTIONS     ############################################################
+  
+  updateCurrentTab <- function(){
+    if (current$tab == 1){
+      updateKompetenceDiagram()
+    }
+    else if (current$tab == 2){
+      updateProgressionDiagram()
+    }
+    else if (current$tab == 3){
+      updateAnnonceList()
+    }
+  }
   
   searchFieldEffects <- function(){
     if (input$searchField != ""){
@@ -388,13 +379,37 @@ server <- function(input, output, session){
                         inputId = "availableCategories",
                         choices = foundKompetencer
       )
+      kompetencer$ak <- foundKompetencer
     }
     else{
-      updateSelectInput(session,
-                        inputId = "availableCategories",
-                        choices = kompetencer$ak
-      )
+      groupUpdateEffects()
     }
+  }
+  
+  groupUpdateEffects <- function(){
+    q1 <- 'select prefferredLabel, _id from kompetence where grp="'
+    q2 <- input$groupChoice
+    q3 <- '" order by prefferredLabel asc'
+    
+    if      (q2 == "_"){q2 <- ""} #Can't put empty string in selectInput, so _ is used to represent the empty string group.
+    else if (q2 == "NULL"){q1 <- 'select prefferredLabel, _id from kompetence where grp is '; q3 <- ' order by prefferredLabel asc'}
+    
+    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+    stopifnot(is.object(con))
+    
+    if (q2 == "Alle Grupper"){
+      availableCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id from kompetence order by prefferredLabel asc')
+    }
+    else{
+      availableCategoryData <- dbGetQuery(con, paste0(q1, q2, q3))
+    }
+    dbDisconnect(con)
+    kompetencer$ak <- as.matrix(availableCategoryData)[,1]
+    
+    updateSelectInput(session,
+                      inputId = "availableCategories",
+                      choices = kompetencer$ak
+    )
   }
   
   updateKompetenceDiagram <- function(){
