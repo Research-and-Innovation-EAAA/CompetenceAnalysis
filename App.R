@@ -142,15 +142,15 @@ server <- function(input, output, session){
     searchFieldEffects()
   })
   
-  observeEvent(input$dateRange, {
+  observeEvent(input$dateRange, ignoreInit = TRUE, {
     updateCurrentTab()
   })
   
-  observeEvent(input$regChoice, {
+  observeEvent(input$regChoice, ignoreInit = TRUE, {
     updateCurrentTab()
   })
   
-  observeEvent(input$outputPanel, {
+  observeEvent(input$outputPanel, ignoreInit = TRUE, {
     if (input$outputPanel == "Kompetencesammenligning"){
       current$tab <- 1
       if (tabUpdates$kompetence){
@@ -346,7 +346,7 @@ server <- function(input, output, session){
     searchFieldEffects()
   })
   
-  observeEvent(input$progressionDateFormat,{
+  observeEvent(input$progressionDateFormat, ignoreInit = TRUE,{
     updateProgressionDiagram()
   })
   
