@@ -127,6 +127,7 @@ ui <- fluidPage(
 server <- function(input, output, session){
   kompetencer <- reactiveValues(ak = NULL, sk = list())
   current <- reactiveValues(tab = 1)
+  tabUpdates <- reactiveValues(kompetence = FALSE, progression = FALSE, annonce = FALSE)
   
   con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
   stopifnot(is.object(con))
@@ -152,14 +153,25 @@ server <- function(input, output, session){
   observeEvent(input$outputPanel, {
     if (input$outputPanel == "Kompetencesammenligning"){
       current$tab <- 1
+      if (tabUpdates$kompetence){
+        tabUpdates$kompetence <- FALSE
+        updateKompetenceDiagram()
+      }
     }
     else if (input$outputPanel == "Progression"){
       current$tab <- 2
+      if (tabUpdates$progression){
+        tabUpdates$progression <- FALSE
+        updateProgressionDiagram()
+      }
     }
     else if (input$outputPanel == "Annonceliste"){
       current$tab <- 3
+      if (tabUpdates$annonce){
+        tabUpdates$annonce <- FALSE
+        updateAnnonceList()
+      }
     }
-    updateCurrentTab()
   })
   
   ########################################
@@ -356,12 +368,18 @@ server <- function(input, output, session){
   updateCurrentTab <- function(){
     if (current$tab == 1){
       updateKompetenceDiagram()
+      tabUpdates$progression <- TRUE
+      tabUpdates$annonce <- TRUE
     }
     else if (current$tab == 2){
       updateProgressionDiagram()
+      tabUpdates$kompetence <- TRUE
+      tabUpdates$annonce <- TRUE
     }
     else if (current$tab == 3){
       updateAnnonceList()
+      tabUpdates$kompetence <- TRUE
+      tabUpdates$progression <- TRUE
     }
   }
   
@@ -414,7 +432,6 @@ server <- function(input, output, session){
   
   updateKompetenceDiagram <- function(){
     if(length(kompetencer$sk) != 0){
-      output$kompetenceErrorField <- renderText("Arbejder, Vent Venligst.")
       matchIndexes <- list()
       categoryMatrix <- as.matrix(fullCategoryData)
       for (kompetence in kompetencer$sk){
@@ -483,7 +500,6 @@ server <- function(input, output, session){
   
   updateProgressionDiagram <- function(){
     if(length(kompetencer$sk) != 0){
-      output$progressionErrorField <- renderText("Arbejder, vent venligst.")
       matchIndexes <- list()
       categoryMatrix <- as.matrix(fullCategoryData)
       for (kompetence in kompetencer$sk){
@@ -673,7 +689,6 @@ server <- function(input, output, session){
   
   updateAnnonceList <- function(){
     if(length(kompetencer$sk) != 0){
-      output$annonceErrorField <- renderText("Arbejder, vent venligst.")
       matchIndexes <- list()
       categoryMatrix <- as.matrix(fullCategoryData)
       for (kompetence in kompetencer$sk){
