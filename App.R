@@ -186,21 +186,19 @@ server <- function(input, output, session){
       withProgress(message = "Tilføjer kompetence(r)", expr = {
         setProgress(0)
         kompetencer$sk <- c(kompetencer$sk, input$availableCategories)
-        setProgress(1/5)
-        kompetencer$ak <- kompetencer$ak[kompetencer$ak != input$availableCategories]  
-        setProgress(2/5)
+        setProgress(1/4)
+        kompetencer$ak <- setdiff(kompetencer$ak, kompetencer$sk)
+        setProgress(2/4)
         updateSelectInput(session,
                           inputId = "selectedCategories", 
                           choices = kompetencer$sk
         )
-        updateSelectInput(session,
-                          inputId = "availableCategories", 
+        updateCurrentTab()
+        updateSelectizeInput(session,
+                          inputId = "availableCategories",
                           choices = kompetencer$ak
         )
-        setProgress(3/5)
-        searchFieldEffects()
-        setProgress(4/5)
-        updateCurrentTab()
+        setProgress(3/4)
         setProgress(1)
       })
     }
@@ -211,7 +209,7 @@ server <- function(input, output, session){
         setProgress(0)
         kompetencer$ak <- c(kompetencer$ak, input$selectedCategories)
         setProgress(1/5)
-        kompetencer$sk <- kompetencer$sk[kompetencer$sk != input$selectedCategories]  
+        kompetencer$sk <- setdiff(kompetencer$sk, input$selectedCategories) 
         setProgress(2/5)
         updateSelectInput(session,
                           inputId = "selectedCategories", 
@@ -600,19 +598,15 @@ server <- function(input, output, session){
         setProgress(2/7)
         progressionData <- progressionData %>% group_by(date) %>% summarize(amount = sum(amount))
         progressionData <- progressionData[order(progressionData$date, decreasing = FALSE),]
-        xInc <- 1
         format <- ""
         if (input$progressionDateFormat == "Uge"){
           format <- "%Y-%W"
-          xInc <- 7
         }
         else if (input$progressionDateFormat == "Måned"){
           format <- "%Y-%m"
-          xInc <- 30
         }
         else if (input$progressionDateFormat == "År"){
           format <- "%Y"
-          xInc <- 365
         }
         
         setProgress(3/7)
@@ -714,10 +708,10 @@ server <- function(input, output, session){
           y2 <- 0
           n <- nrow(formattedData)
           for (i in 1:n){
-            x <- x + i * xInc
+            x <- x + i
             y <- y + formattedData$amount[i]
-            xy <- xy + ((i * xInc) * formattedData$amount[i])
-            x2 <- x2 + (i * xInc)^2
+            xy <- xy + ((i) * formattedData$amount[i])
+            x2 <- x2 + (i)^2
             y2 <- y2 + formattedData$amount[i]^2
             
             lastDate <- formattedData$date[i]
