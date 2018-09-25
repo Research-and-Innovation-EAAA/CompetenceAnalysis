@@ -3,6 +3,7 @@ library(RMariaDB)
 library(shiny)
 library(dplyr)
 library(ggplot2)
+library(shinyTree)
 
 source('credentials.R')
 
@@ -18,37 +19,10 @@ ui <- fluidPage(
   fluidRow(style = "margin-top: 15px;",
     column(6,
            wellPanel(
-             fluidRow(
-               column(6,
-                      selectInput(inputId = "regChoice",
-                                  label = "Vælg region", 
-                                  choices = list("Alle Regioner", "storkoebenhavn", "nordsjaelland", "region-sjaelland", "fyn", "region-nordjylland", "region-midtjylland", "sydjylland", "bornholm", "skaane", "groenland", "faeroeerne", "udlandet"),
-                                  multiple = FALSE, 
-                                  width = "400px"
-                      )
-               ),
-               column(6,
-                      dateRangeInput('dateRange',
-                                     label = 'Periode: Ældste dato er 2018-05-20',
-                                     start = "2018-05-20", end = Sys.Date()
-                      )
-               )
-             )
-           ),
-           wellPanel(
-             fluidRow(
-               column(6,
-                      textInput(inputId = "searchField", label = "Søgefelt")
-               ),
-               column(6,
-                      selectInput(inputId = "groupChoice",
-                                  label = "Kompetencegrupper: ", 
-                                  choices = list("Alle Grupper", "ict", "ict2", "Core", "language", "multimedie", "transversal", "GartnerForecast", "IT-arkitekt", "undefined", "_", "NULL"),
-                                  multiple = FALSE, 
-                                  width = "400px"
-                      )
-               )
+             wellPanel(
+               shinyTree("kompetenceTree", checkbox = TRUE)
              ),
+             fluidRow(textInput(inputId = "searchField", label = "Søgefelt")),
              wellPanel(
                fluidRow(
                  column(4,
@@ -67,8 +41,7 @@ ui <- fluidPage(
                         actionButton("add", "Tilføj >", width = 150),
                         actionButton("remove", "< Fjern", width = 150),
                         actionButton("removeKat", "<< Fjern kategori", width = 150),
-                        actionButton("removeAll", "<<< Fjern alle", width = 150)
-                        
+                        actionButton("removeAll", "<<< Fjern alle", width = 150)    
                  ),
                  column(4, 
                         selectInput(inputId = "selectedCategories",
@@ -84,7 +57,25 @@ ui <- fluidPage(
              )
            )
     ),
-    column(6, 
+    column(6,
+           wellPanel(
+             fluidRow(
+               column(6,
+                      selectInput(inputId = "regChoice",
+                                  label = "Vælg region", 
+                                  choices = list("Alle regioner", "storkoebenhavn", "nordsjaelland", "region-sjaelland", "fyn", "region-nordjylland", "region-midtjylland", "sydjylland", "bornholm", "skaane", "groenland", "faeroeerne", "udlandet"),
+                                  multiple = FALSE, 
+                                  width = "400px"
+                      )
+               ),
+               column(6,
+                      dateRangeInput('dateRange',
+                                     label = 'Periode: Ældste dato er 2018-05-20',
+                                     start = "2018-05-20", end = Sys.Date()
+                      )
+               )
+             )
+           ),
            tabsetPanel(id = "outputPanel",
              tabPanel("Kompetencesammenligning",
                       wellPanel(
@@ -127,24 +118,24 @@ server <- function(input, output, session){
   kompetencer <- reactiveValues(ak = NULL, sk = list())
   current <- reactiveValues(tab = 1)
   tabUpdates <- reactiveValues(kompetence = FALSE, progression = FALSE, annonce = FALSE)
+  lastShinyTree <- reactiveValues(tree = list())
   
   con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
   stopifnot(is.object(con))
-  fullCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id from kompetence order by prefferredLabel asc')
-  annonceCount <- dbGetQuery(con, 'select count(*) from annonce')[1,1]
-  output$annonceCountField <- renderText(paste0("(", annonceCount, " Annoncer)"))
+  withProgress(message = "Forbereder data", expr = {
+    setProgress(0)
+    fullCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id, grp from kompetence order by prefferredLabel asc')
+    setProgress(1/3)
+    annonceCount <- dbGetQuery(con, 'select count(*) from annonce')[1,1]
+    output$annonceCountField <- renderText(paste0("(", annonceCount, " Annoncer)"))
+    setProgress(2/3)
+    treeString <- dbGetQuery(con, 'select shinyTreeJSON from global where _id = 1')[1,1]
+    output$kompetenceTree <- renderEmptyTree()
+    updateTree(session,"kompetenceTree", treeString)
+    setProgress(1)
+  })
   
   dbDisconnect(con)
-  
-  observeEvent(input$groupChoice, {
-    withProgress(message = "Henter kompetencer fra gruppe.", expr = {
-      setProgress(0)
-      groupUpdateEffects()
-      setProgress(0.5)
-      searchFieldEffects()
-      setProgress(1)
-    })
-  })
   
   observeEvent(input$dateRange, ignoreInit = TRUE, {
     updateCurrentTab()
@@ -177,6 +168,16 @@ server <- function(input, output, session){
       }
     }
   })
+  
+  observeEvent(input$kompetenceTree, ignoreInit = TRUE, {
+    selectedList <- get_selected(input$kompetenceTree)
+    if (!identical(lastShinyTree$tree, selectedList)){
+      treeUpdateEffects()
+      searchFieldEffects()
+    }
+  })
+  
+  
   
   ########################################
   #####     ADD/REMOVE OBSERVERS     #####
@@ -449,34 +450,85 @@ server <- function(input, output, session){
       })
     }
     else{
-      groupUpdateEffects()
+      treeUpdateEffects()
     }
   }
   
-  groupUpdateEffects <- function(){
-    q1 <- 'select prefferredLabel, _id from kompetence where grp="'
-    q2 <- input$groupChoice
-    q3 <- '" order by prefferredLabel asc'
-    
-    if      (q2 == "_"){q2 <- ""} #Can't put empty string in selectInput, so _ is used to represent the empty string group.
-    else if (q2 == "NULL"){q1 <- 'select prefferredLabel, _id from kompetence where grp is '; q3 <- ' order by prefferredLabel asc'}
-    
-    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
-    stopifnot(is.object(con))
-    
-    if (q2 == "Alle Grupper"){
-      availableCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id from kompetence order by prefferredLabel asc')
+  treeUpdateEffects <- function(){
+    selectedList <- get_selected(input$kompetenceTree)
+    if (length(selectedList) > 0){
+      withProgress(message = "Opdaterer tilgængelig list", expr = {
+        setProgress(0)
+        lastShinyTree$tree <- selectedList
+        
+        q1 <- 'select prefferredLabel from kompetence where grp = '
+        q2 <- ''
+        for (i in 1:length(selectedList)){
+          q2 <- paste0(q2, '"', selectedList[i], '"')
+          if (i != length(selectedList)){
+            q2 <- paste0(q2, ' or grp = ')
+          }
+        }
+        
+        searchList <- list()
+        
+        for (i in 1:length(selectedList)){
+          searchList <- c(searchList, selectedList[[i]][1])
+        }
+        setProgress(1/6)
+        
+        done <- FALSE
+        searchList <- unlist(searchList)
+        
+        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+        stopifnot(is.object(con))
+        
+        setProgress(2/6)
+        finalList <- as.vector(as.matrix(dbGetQuery(con, paste0(q1, q2))))
+        
+        setProgress(3/6)
+        while (!done){
+          subList = list()
+          for (superKompetence in searchList){
+            subData <- dbGetQuery(con, paste0('select k.prefferredLabel from kompetence k, kompetence_kategorisering kk where k.conceptUri = kk.subkompetence and kk.superkompetence = (select distinct k.conceptUri from kompetence k, kompetence_kategorisering kk where k.prefferredLabel = "', superKompetence, '" and k.conceptUri = kk.superkompetence)'))
+            subList <- c(subList, as.vector(as.matrix(subData)))
+          }
+          finalList <- c(finalList, searchList)
+          searchList <- subList
+          
+          if (length(searchList) == 0){
+            done <- TRUE
+          }
+          else
+          {
+            searchList <- setdiff(searchList, finalList)
+          }
+          
+        }
+        dbDisconnect(con)
+        
+        kompetencer$ak <- list()
+        
+        setProgress(4/6)
+        for (kompetence in finalList){
+          if (!any(kompetencer$sk == kompetence)){
+            kompetencer$ak <- c(kompetencer$ak, kompetence)
+          }
+        }
+        setProgress(5/6)
+        updateSelectInput(session,
+                          inputId = "availableCategories", 
+                          choices = kompetencer$ak
+        )
+        setProgress(1)
+      })
     }
     else{
-      availableCategoryData <- dbGetQuery(con, paste0(q1, q2, q3))
+      updateSelectInput(session,
+                        inputId = "availableCategories", 
+                        choices = list()
+      )
     }
-    dbDisconnect(con)
-    kompetencer$ak <- as.matrix(availableCategoryData)[,1]
-    
-    updateSelectInput(session,
-                      inputId = "availableCategories",
-                      choices = kompetencer$ak
-    )
   }
   
   updateKompetenceDiagram <- function(){
@@ -502,7 +554,7 @@ server <- function(input, output, session){
         q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
         q4 <- input$regChoice            #region name
         q5 <- '")'
-        if (q4 == "Alle Regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle Regioner'
+        if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
         ##############
         q6 <- ' and a.timeStamp between "'
         q7 <- format(input$dateRange[1]) #Start date
@@ -534,7 +586,7 @@ server <- function(input, output, session){
           output$kompetenceDiagram <- renderPlot({
             par(mar = c(5,15,4,2) + 0.1)
             barplot(kompetenceData$amount, 
-                    main="Antal jobopslag for valgt region, tidsramme & kompetencer ", 
+                    main=paste0("Antal jobopslag for de valgte kompetencer i ", input$regChoice, ", fra ", input$dateRange[1], " til ", input$dateRange[2], "."), 
                     names.arg = kompetenceData$prefferredLabel,
                     las = 2,
                     horiz = TRUE
@@ -579,7 +631,7 @@ server <- function(input, output, session){
         q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
         q4 <- input$regChoice            #region name
         q5 <- '")'
-        if (q4 == "Alle Regioner"){q3=""; q4=""; q5=""} #Cuts out region where-clause if the region is 'Alle Regioner'
+        if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region where-clause if the region is 'Alle regioner'
         ##############
         q6 <- ' and a.timeStamp between "'
         q7 <- format(input$dateRange[1]) #Start date
@@ -775,7 +827,7 @@ server <- function(input, output, session){
         q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
         q4 <- input$regChoice            #region name
         q5 <- '")'
-        if (q4 == "Alle Regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle Regioner'
+        if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
         ##############
         q6 <- ' and a.timeStamp between "'
         q7 <- format(input$dateRange[1]) #Start date
