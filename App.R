@@ -43,7 +43,7 @@ ui <- fluidPage(
                column(6,
                       selectInput(inputId = "groupChoice",
                                   label = "Kompetencegrupper: ", 
-                                  choices = list("Alle Grupper", "ict", "ict2", "Core", "language", "multimedie", "transversal", "GartnerForecast", "undefined", "_", "NULL"),
+                                  choices = list("Alle Grupper", "ict", "ict2", "Core", "language", "multimedie", "transversal", "GartnerForecast", "IT-arkitekt", "undefined", "_", "NULL"),
                                   multiple = FALSE, 
                                   width = "400px"
                       )
