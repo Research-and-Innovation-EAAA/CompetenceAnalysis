@@ -460,21 +460,33 @@ server <- function(input, output, session){
       withProgress(message = "Opdaterer tilgængelig list", expr = {
         setProgress(0)
         lastShinyTree$tree <- selectedList
+        
+        q1 <- 'select prefferredLabel from kompetence where grp = '
+        q2 <- ''
+        for (i in 1:length(selectedList)){
+          q2 <- paste0(q2, '"', selectedList[i], '"')
+          if (i != length(selectedList)){
+            q2 <- paste0(q2, ' or grp = ')
+          }
+        }
+        
         searchList <- list()
         
         for (i in 1:length(selectedList)){
           searchList <- c(searchList, selectedList[[i]][1])
         }
-        setProgress(1/5)
+        setProgress(1/6)
         
         done <- FALSE
-        finalList <- list()
         searchList <- unlist(searchList)
         
         con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
-        setProgress(2/5)
+        setProgress(2/6)
+        finalList <- as.vector(as.matrix(dbGetQuery(con, paste0(q1, q2))))
+        
+        setProgress(3/6)
         while (!done){
           subList = list()
           for (superKompetence in searchList){
@@ -497,13 +509,13 @@ server <- function(input, output, session){
         
         kompetencer$ak <- list()
         
-        setProgress(3/5)
+        setProgress(4/6)
         for (kompetence in finalList){
           if (!any(kompetencer$sk == kompetence)){
             kompetencer$ak <- c(kompetencer$ak, kompetence)
           }
         }
-        setProgress(4/5)
+        setProgress(5/6)
         updateSelectInput(session,
                           inputId = "availableCategories", 
                           choices = kompetencer$ak
