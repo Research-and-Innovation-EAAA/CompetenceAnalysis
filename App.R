@@ -18,46 +18,42 @@ ui <- fluidPage(
   fluidRow(style = "border-bottom: 2px solid black; margin-top: 10px;"),
   fluidRow(style = "margin-top: 15px;",
     column(6,
+           tags$h3("Kompetence filtre"),
            wellPanel(
-             wellPanel(
-               shinyTree("kompetenceTree", checkbox = TRUE)
-             ),
-             fluidRow(textInput(inputId = "searchField", label = "Søgefelt")),
-             wellPanel(
-               fluidRow(
-                 column(4,
-                        selectInput(inputId = "availableCategories",
-                                    label = "Tilgængelige kompetencer:",
-                                    size = 20,
-                                    selectize = FALSE,
-                                    multiple = TRUE,
-                                    choices = list(),
-                                    width = "100%"
-                        )
-                 ),
-                 column(4, align = "center", style = "margin-top: 75px;",
-                        actionButton("addAll", "Tilføj alle >>>", width = 150),
-                        actionButton("addKat", "Tilføj kategori >>", width = 150),
-                        actionButton("add", "Tilføj >", width = 150),
-                        actionButton("remove", "< Fjern", width = 150),
-                        actionButton("removeKat", "<< Fjern kategori", width = 150),
-                        actionButton("removeAll", "<<< Fjern alle", width = 150)    
-                 ),
-                 column(4, 
-                        selectInput(inputId = "selectedCategories",
-                                    label = "Valgte kompetencer:",
-                                    size = 20,
-                                    selectize = FALSE,
-                                    multiple = TRUE,
-                                    choices = list(),
-                                    width = "100%"
-                        )
-                 )
+             shinyTree("kompetenceTree", checkbox = TRUE),
+             textInput(inputId = "searchField", label = "Søgefelt", width = 400),
+             fluidRow(
+               column(4,
+                      selectInput(inputId = "availableCategories",
+                                  label = "Tilgængelige kompetencer:",
+                                  size = 20,
+                                  selectize = FALSE,
+                                  multiple = TRUE,
+                                  choices = list(),
+                                  width = "100%"
+                      )
+               ),
+               column(4, align = "center", style = "margin-top: 75px;",
+                      actionButton("addAll", "Tilføj alle >>", width = 150),
+                      actionButton("add", "Tilføj >", width = 150),
+                      actionButton("remove", "< Fjern", width = 150),
+                      actionButton("removeAll", "<< Fjern alle", width = 150)    
+               ),
+               column(4, 
+                      selectInput(inputId = "selectedCategories",
+                                  label = "Valgte kompetencer:",
+                                  size = 20,
+                                  selectize = FALSE,
+                                  multiple = TRUE,
+                                  choices = list(),
+                                  width = "100%"
+                      )
                )
              )
            )
     ),
     column(6,
+           tags$h3("Annonce filtre"),
            wellPanel(
              fluidRow(
                column(6,
@@ -76,6 +72,7 @@ ui <- fluidPage(
                )
              )
            ),
+           tags$h3("Data outputs"),
            tabsetPanel(id = "outputPanel",
              tabPanel("Kompetencesammenligning",
                       wellPanel(
@@ -115,7 +112,7 @@ ui <- fluidPage(
 )
 
 server <- function(input, output, session){
-  kompetencer <- reactiveValues(ak = NULL, sk = list())
+  kompetencer <- reactiveValues(ak = NULL, sk = list(), fk = list())
   current <- reactiveValues(tab = 1)
   tabUpdates <- reactiveValues(kompetence = FALSE, progression = FALSE, annonce = FALSE)
   lastShinyTree <- reactiveValues(tree = list())
@@ -200,6 +197,7 @@ server <- function(input, output, session){
                           choices = kompetencer$ak
         )
         setProgress(3/4)
+        searchFieldEffects()
         setProgress(1)
       })
     }
@@ -228,130 +226,38 @@ server <- function(input, output, session){
       })
     }
   })
-  observeEvent(input$addKat, {
-    if (!is.null(input$availableCategories)){
-      withProgress(message = "Tilføjer kompetence med alle subkompetencer", expr = {
-        setProgress(0)
-        done <- FALSE
-        finalList <- list()
-        searchList <- c(input$availableCategories)
-        
-        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
-        stopifnot(is.object(con))
-        
-        setProgress(1/6)
-        while (!done){
-          subList = list()
-          for (superKompetence in searchList){
-            subData <- dbGetQuery(con, paste0('select k.prefferredLabel from kompetence k, kompetence_kategorisering kk where k.conceptUri = kk.subkompetence and kk.superkompetence = (select distinct k.conceptUri from kompetence k, kompetence_kategorisering kk where k.prefferredLabel = "', superKompetence, '" and k.conceptUri = kk.superkompetence)'))
-            subList <- c(subList, as.vector(as.matrix(subData)))
-          }
-          finalList <- c(finalList, searchList)
-          searchList <- subList
-          
-          if (length(searchList) == 0){
-            done <- TRUE
-          }
-          else
-          {
-            # Removes all elements from searchList that are present in the finalList, this is to prevent a loop.
-            # Example that would result in a loop: 'Digital kommunikation og kollaboration'
-            # Over half the items under group ict belongs under that example.
-            searchList <- setdiff(searchList, finalList)
-          }
-          
-        }
-        dbDisconnect(con)
-        
-        setProgress(2/6)
-        for (kompetence in finalList){
-          if (!any(kompetencer$sk == kompetence)){
-            kompetencer$sk <- c(kompetencer$sk, kompetence)
-            kompetencer$ak <- kompetencer$ak[kompetencer$ak != kompetence]
-          }
-        }
-        setProgress(3/6)
-        updateSelectInput(session,
-                          inputId = "selectedCategories", 
-                          choices = kompetencer$sk
-        )
-        updateSelectInput(session,
-                          inputId = "availableCategories", 
-                          choices = kompetencer$ak
-        )
-        setProgress(4/6)
-        searchFieldEffects()
-        setProgress(5/6)
-        updateCurrentTab()
-        setProgress(1)
-      })
-    }
-  })
-  
-  observeEvent(input$removeKat, {
-    if (!is.null(input$selectedCategories)){
-      withProgress(message = "Fjerner kompetence og alle subkompetencer", expr = {
-        setProgress(0)
-        done <- FALSE
-        finalList <- list()
-        searchList <- c(input$selectedCategories)
-        
-        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
-        stopifnot(is.object(con))
-        
-        setProgress(1/6)
-        while (!done){
-          subList = list()
-          for (superKompetence in searchList){
-            subData <- dbGetQuery(con, paste0('select k.prefferredLabel from kompetence k, kompetence_kategorisering kk where k.conceptUri = kk.subkompetence and kk.superkompetence = (select distinct k.conceptUri from kompetence k, kompetence_kategorisering kk where k.prefferredLabel = "', superKompetence, '" and k.conceptUri = kk.superkompetence)'))
-            subList <- c(subList, as.vector(as.matrix(subData)))
-          }
-          finalList <- c(finalList, searchList)
-          searchList <- subList
-          if (length(subList) == 0){
-            done <- TRUE
-          }
-        }
-        dbDisconnect(con)
-        setProgress(2/6)
-        for (kompetence in finalList){
-          kompetencer$ak <- c(kompetencer$ak, kompetence)
-          kompetencer$sk <- kompetencer$sk[kompetencer$sk != kompetence]
-        }
-        setProgress(3/6)
-        updateSelectInput(session,
-                          inputId = "selectedCategories", 
-                          choices = kompetencer$sk
-        )
-        updateSelectInput(session,
-                          inputId = "availableCategories", 
-                          choices = kompetencer$ak
-        )
-        setProgress(4/6)
-        searchFieldEffects()
-        setProgress(5/6)
-        updateCurrentTab()
-        setProgress(1)
-      })
-    }
-  })
   
   observeEvent(input$addAll, {
     withProgress(message = "Tilføjer alle på nuværende liste", expr = {
-      setProgress(0)
-      kompetencer$sk <- c(kompetencer$sk, kompetencer$ak)
-      setProgress(1/3)
-      kompetencer$ak <- list()
-      
-      updateSelectInput(session,
-                        inputId = "availableCategories", 
-                        choices = kompetencer$ak
-      )
+      if (input$searchField != ""){
+        setProgress(0)
+        kompetencer$sk <- c(kompetencer$sk, kompetencer$fk)
+        setProgress(1/3)
+        kompetencer$ak <- setdiff(kompetencer$ak, kompetencer$fk) 
+        kompetencer$fk <- list()
+        
+        updateSelectInput(session,
+                          inputId = "availableCategories", 
+                          choices = kompetencer$ak
+        )
+      }
+      else{
+        setProgress(0)
+        kompetencer$sk <- c(kompetencer$sk, kompetencer$ak)
+        setProgress(1/3)
+        kompetencer$ak <- list()
+        
+        updateSelectInput(session,
+                          inputId = "availableCategories", 
+                          choices = kompetencer$ak
+        )
+      }
       updateSelectInput(session,
                         inputId = "selectedCategories", 
                         choices = kompetencer$sk
       )
       setProgress(2/3)
+      searchFieldEffects()
       updateCurrentTab()
       setProgress(1)
     })
@@ -382,7 +288,7 @@ server <- function(input, output, session){
   
   #######################################
   #######################################
-  observeEvent(input$searchField, {
+  observeEvent(input$searchField, ignoreInit = TRUE, {
     searchFieldEffects()
   })
   
@@ -445,12 +351,15 @@ server <- function(input, output, session){
                           inputId = "availableCategories",
                           choices = foundKompetencer
         )
-        kompetencer$ak <- foundKompetencer
+        kompetencer$fk = foundKompetencer
         setProgress(1)
       })
     }
     else{
-      treeUpdateEffects()
+      updateSelectInput(session,
+                        inputId = "availableCategories",
+                        choices = kompetencer$ak
+      )
     }
   }
   
@@ -459,7 +368,6 @@ server <- function(input, output, session){
     if (length(selectedList) > 0){
       withProgress(message = "Opdaterer tilgængelig list", expr = {
         setProgress(0)
-        lastShinyTree$tree <- selectedList
         
         q1 <- 'select prefferredLabel from kompetence where grp = '
         q2 <- ''
@@ -477,8 +385,13 @@ server <- function(input, output, session){
         }
         setProgress(1/6)
         
-        done <- FALSE
-        searchList <- unlist(searchList)
+        i <- length(searchList)
+        while(i > 0){
+          if (!any(as.vector(fullCategoryData[,1]) == searchList[[i]])){
+            searchList[[i]] <- NULL
+          }
+          i <- i - 1
+        }
         
         con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
@@ -487,15 +400,15 @@ server <- function(input, output, session){
         finalList <- as.vector(as.matrix(dbGetQuery(con, paste0(q1, q2))))
         
         setProgress(3/6)
+        done <- FALSE
         while (!done){
-          subList = list()
+          subList = c()
           for (superKompetence in searchList){
             subData <- dbGetQuery(con, paste0('select k.prefferredLabel from kompetence k, kompetence_kategorisering kk where k.conceptUri = kk.subkompetence and kk.superkompetence = (select distinct k.conceptUri from kompetence k, kompetence_kategorisering kk where k.prefferredLabel = "', superKompetence, '" and k.conceptUri = kk.superkompetence)'))
-            subList <- c(subList, as.vector(as.matrix(subData)))
+            subList <- c(subList,subData[,1])
           }
           finalList <- c(finalList, searchList)
           searchList <- subList
-          
           if (length(searchList) == 0){
             done <- TRUE
           }
@@ -507,7 +420,7 @@ server <- function(input, output, session){
         }
         dbDisconnect(con)
         
-        kompetencer$ak <- list()
+        kompetencer$ak <- c()
         
         setProgress(4/6)
         for (kompetence in finalList){
@@ -515,6 +428,7 @@ server <- function(input, output, session){
             kompetencer$ak <- c(kompetencer$ak, kompetence)
           }
         }
+        #kompetencer$ak <- sort.list(kompetencer$ak, decreasing = FALSE)
         setProgress(5/6)
         updateSelectInput(session,
                           inputId = "availableCategories", 
@@ -529,6 +443,7 @@ server <- function(input, output, session){
                         choices = list()
       )
     }
+    lastShinyTree$tree <- selectedList
   }
   
   updateKompetenceDiagram <- function(){
