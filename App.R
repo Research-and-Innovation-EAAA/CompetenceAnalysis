@@ -9,19 +9,19 @@ source('credentials.R')
 
 ui <- fluidPage(
   fluidRow(style = "margin-top: 5px;",
-    column(4, img(src = "EAAA_Logo.jpg")),
-    column(8, style = "margin-top: 15px", 
+    column(6, style = "margin-top: 15px", 
            titlePanel(title = "KOMPETENCEANALYSE", windowTitle = "Annonce Analyse"),
-           div(style = "margin-left: 90px; font-size: 20px;", textOutput(outputId = "annonceCountField"))
-    )
+           div(style = "font-size: 20px;", textOutput(outputId = "annonceCountField"))
+    ),
+    column(6, style = "margin-top: 15px; text-align: right", img(src = "EAAA_Logo.jpg"))
   ),
   fluidRow(style = "border-bottom: 2px solid black; margin-top: 10px;"),
   fluidRow(style = "margin-top: 15px;",
     column(6,
-           tags$h3("Kompetence filtre"),
+           tags$h3("Kompetencer"),
            wellPanel(
              shinyTree("kompetenceTree", checkbox = TRUE),
-             textInput(inputId = "searchField", label = "Søgefelt", width = 400),
+             textInput(inputId = "searchField", label = "Søgefelt"),
              fluidRow(
                column(4,
                       selectInput(inputId = "availableCategories",
@@ -50,10 +50,8 @@ ui <- fluidPage(
                       )
                )
              )
-           )
-    ),
-    column(6,
-           tags$h3("Annonce filtre"),
+           ),
+           tags$h3("Annoncer"),
            wellPanel(
              fluidRow(
                column(6,
@@ -66,13 +64,15 @@ ui <- fluidPage(
                ),
                column(6,
                       dateRangeInput('dateRange',
-                                     label = 'Periode: Ældste dato er 2018-05-20',
-                                     start = "2018-05-20", end = Sys.Date()
+                                     label = 'Periode:',
+                                     start = Sys.Date()-30, end = Sys.Date()
                       )
                )
              )
-           ),
-           tags$h3("Data outputs"),
+           )
+    ),
+    column(6,
+           tags$h3("Analyse"),
            tabsetPanel(id = "outputPanel",
              tabPanel("Kompetencesammenligning",
                       wellPanel(
@@ -501,7 +501,7 @@ server <- function(input, output, session){
           output$kompetenceDiagram <- renderPlot({
             par(mar = c(5,15,4,2) + 0.1)
             barplot(kompetenceData$amount, 
-                    main=paste0("Antal jobopslag for de valgte kompetencer i ", input$regChoice, ", fra ", input$dateRange[1], " til ", input$dateRange[2], "."), 
+                    main=paste0("Kompetencer i jobopslag\n", input$regChoice, " fra ", input$dateRange[1], " til ", input$dateRange[2], "."), 
                     names.arg = kompetenceData$prefferredLabel,
                     las = 2,
                     horiz = TRUE
