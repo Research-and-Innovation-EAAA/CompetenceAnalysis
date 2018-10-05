@@ -25,7 +25,7 @@ ui <- fluidPage(
              fluidRow(
                column(4,
                       selectInput(inputId = "availableCategories",
-                                  label = "Tilgængelige kompetencer:",
+                                  label = "Tilgængelige:",
                                   size = 20,
                                   selectize = FALSE,
                                   multiple = TRUE,
@@ -41,7 +41,7 @@ ui <- fluidPage(
                ),
                column(4, 
                       selectInput(inputId = "selectedCategories",
-                                  label = "Valgte kompetencer:",
+                                  label = "Valgte:",
                                   size = 20,
                                   selectize = FALSE,
                                   multiple = TRUE,
@@ -463,7 +463,7 @@ server <- function(input, output, session){
         stopifnot(is.object(con))
         
         setProgress(1/5)
-        q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where ('
+        q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
         q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
@@ -475,19 +475,21 @@ server <- function(input, output, session){
         q7 <- format(input$dateRange[1]) #Start date
         q8 <- '" and "'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '" group by k._id order by amount desc limit 30'
+        q10 <- '" group by ak.kompetence_id order by amount desc limit 30'
         
+        q2 <- ' ak.kompetence_id IN ('
         for (i in 1:length(kompetenceIds)){
           if (i < length(kompetenceIds)){
-            q2 <- paste0(q2, (paste0('k._id = ', kompetenceIds[i], ' or ')))
+            q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
           }
           else{
-            q2 <- paste0(q2, (paste0('k._id = ', kompetenceIds[i], ')')))
+            q2 <- paste0(q2, kompetenceIds[i],') ')
           }
         }
-        
+
         setProgress(2/5)
-        kompetenceData <- dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10))
+        qq <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)
+        kompetenceData <- dbGetQuery(con, qq)
         
         dbDisconnect(con)
         
@@ -736,7 +738,7 @@ server <- function(input, output, session){
         
         setProgress(1/3)
         
-        q1 <- 'select a._id, a.title from annonce a join annonce_kompetence ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where ('
+        q1 <- 'select a._id, a.title from annonce a join annonce_kompetence ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where '
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
         q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
@@ -750,12 +752,13 @@ server <- function(input, output, session){
         q9 <- format(input$dateRange[2]) #End date
         q10 <- '" group by a._id'
         
+        q2 <- ' ak.kompetence_id IN ('
         for (i in 1:length(kompetenceIds)){
           if (i < length(kompetenceIds)){
-            q2 <- paste0(q2, (paste0('k._id = ', kompetenceIds[i], ' or ')))
+            q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
           }
           else{
-            q2 <- paste0(q2, (paste0('k._id = ', kompetenceIds[i], ')')))
+            q2 <- paste0(q2, kompetenceIds[i],') ')
           }
         }
         
