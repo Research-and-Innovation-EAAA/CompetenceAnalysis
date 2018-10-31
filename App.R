@@ -299,7 +299,7 @@ server <- function(input, output, session){
   observeEvent(input$annonceList, {
     withProgress(message = "Finder annoncetekst", expr = {
       setProgress(0)
-      con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+      con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
       stopifnot(is.object(con))
       
       id <- unlist(strsplit(input$annonceList, " "))[1]
