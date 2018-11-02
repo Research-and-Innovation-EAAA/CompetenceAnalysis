@@ -72,14 +72,25 @@ ui <- fluidPage(
            )
     ),
     column(6,
-           tags$h3("Analyse"),
+           fluidRow(
+             column(4,
+                    tags$h3("Analyse")
+                    ),
+             column(8, 
+                    selectInput(inputId = "matchChoice",
+                                label = "Vælg matchsystem",
+                                choices = list("Regulær", "Machine-Learnt"),
+                                multiple = FALSE,
+                                width = "200px"
+                                )
+                    )
+           ),
            tabsetPanel(id = "outputPanel",
              tabPanel("Kompetencesammenligning",
                       wellPanel(
                         textOutput(outputId = "kompetenceErrorField"),
                         plotOutput("kompetenceDiagram", height = 620)
                       )
-                    
              ),
              tabPanel("Progression", 
                       wellPanel(
@@ -464,6 +475,9 @@ server <- function(input, output, session){
         
         setProgress(1/5)
         q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
+        if (input$matchChoice == "Machine-Learnt"){
+          q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
+        }
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
         q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
@@ -543,6 +557,9 @@ server <- function(input, output, session){
         setProgress(1/7)
         
         q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
+        if (input$matchChoice == "Machine-Learnt"){
+          q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
+        }
         #q2 is kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
         q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
@@ -739,6 +756,9 @@ server <- function(input, output, session){
         setProgress(1/3)
         
         q1 <- 'select a._id, a.title from annonce a join annonce_kompetence ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where '
+        if (input$matchChoice == "Machine-Learnt"){
+          q1 <- 'select a._id, a.title from annonce a join annonce_kompetence_machine ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where '
+        }
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
         q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
