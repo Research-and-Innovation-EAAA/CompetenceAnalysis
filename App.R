@@ -79,7 +79,7 @@ ui <- fluidPage(
              column(8, 
                     selectInput(inputId = "matchChoice",
                                 label = "Vælg matchsystem",
-                                choices = list("Regulær", "Machine-Learnt"),
+                                choices = list("Ord Match", "Machine-Learned"),
                                 multiple = FALSE,
                                 width = "200px"
                                 )
@@ -128,7 +128,7 @@ server <- function(input, output, session){
   tabUpdates <- reactiveValues(kompetence = FALSE, progression = FALSE, annonce = FALSE)
   lastShinyTree <- reactiveValues(tree = list())
   
-  con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+  con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, port = credentials.port , bigint = c("numeric"))
   stopifnot(is.object(con))
   withProgress(message = "Forbereder data", expr = {
     setProgress(0)
@@ -404,7 +404,7 @@ server <- function(input, output, session){
           i <- i - 1
         }
         
-        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, credentials.port, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
         setProgress(2/6)
@@ -470,12 +470,12 @@ server <- function(input, output, session){
         for (index in matchIndexes){
           kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
         }
-        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, credentials.port, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
         setProgress(1/5)
         q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
-        if (input$matchChoice == "Machine-Learnt"){
+        if (input$matchChoice == "Machine-Learned"){
           q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
         }
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
@@ -551,13 +551,13 @@ server <- function(input, output, session){
         for (index in matchIndexes){
           kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
         }
-        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, credentials.port, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
         setProgress(1/7)
         
         q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
-        if (input$matchChoice == "Machine-Learnt"){
+        if (input$matchChoice == "Machine-Learned"){
           q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
         }
         #q2 is kompetence id, set in loop due to it being the one iterated on.
@@ -750,13 +750,13 @@ server <- function(input, output, session){
         for (index in matchIndexes){
           kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
         }
-        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, credentials.port, port = credentials.port, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
         setProgress(1/3)
         
         q1 <- 'select a._id, a.title from annonce a join annonce_kompetence ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where '
-        if (input$matchChoice == "Machine-Learnt"){
+        if (input$matchChoice == "Machine-Learned"){
           q1 <- 'select a._id, a.title from annonce a join annonce_kompetence_machine ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where '
         }
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
