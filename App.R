@@ -9,13 +9,17 @@ source('credentials.R')
 
 ui <- fluidPage(
   fluidRow(style = "margin-top: 5px;",
-    column(6, style = "margin-top: 15px", 
+    column(6, style = "margin-top: 0px; font-size: 16px;", 
            titlePanel(title = "KOMPETENCEANALYSE", windowTitle = "Annonce Analyse"),
-           div(style = "font-size: 20px;", textOutput(outputId = "annonceCountField"))
+           div(textOutput(outputId = "annonceCountField")),
+	   tags$span("Kilde: "),
+           tags$a(href="https://www.jobindex.dk","JobIndex"),
+	   tags$span(" og "),
+           tags$a(href="https://www.careerjet.dk","CareerJet")	   
     ),
-    column(6, style = "margin-top: 15px; text-align: right", img(src = "EAAA_Logo.jpg"))
+    column(6, style = "margin-top: 5px; text-align: right", img(src = "EAAA_Logo.jpg"))
   ),
-  fluidRow(style = "border-bottom: 2px solid black; margin-top: 10px;"),
+  fluidRow(style = "border-bottom: 2px solid black; margin-top: 15px;"),
   fluidRow(style = "margin-top: 15px;",
     column(6,
            tags$h3("Kompetencer"),
@@ -117,14 +121,14 @@ server <- function(input, output, session){
   tabUpdates <- reactiveValues(kompetence = FALSE, progression = FALSE, annonce = FALSE)
   lastShinyTree <- reactiveValues(tree = list())
   
-  con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+  con <- dbConnect(RMariaDB::MariaDB(), port = credentials.port, host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
   stopifnot(is.object(con))
   withProgress(message = "Forbereder data", expr = {
     setProgress(0)
     fullCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id, grp from kompetence order by prefferredLabel asc')
     setProgress(1/3)
     annonceCount <- dbGetQuery(con, 'select count(*) from annonce')[1,1]
-    output$annonceCountField <- renderText(paste0("(", annonceCount, " Annoncer)"))
+    output$annonceCountField <- renderText(paste0(annonceCount, " jobannoncer"))
     setProgress(2/3)
     treeString <- dbGetQuery(con, 'select shinyTreeJSON from global where _id = 1')[1,1]
     output$kompetenceTree <- renderEmptyTree()
@@ -299,7 +303,7 @@ server <- function(input, output, session){
   observeEvent(input$annonceList, {
     withProgress(message = "Finder annoncetekst", expr = {
       setProgress(0)
-      con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+      con <- dbConnect(RMariaDB::MariaDB(), port = credentials.port, host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
       stopifnot(is.object(con))
       
       id <- unlist(strsplit(input$annonceList, " "))[1]
@@ -393,7 +397,7 @@ server <- function(input, output, session){
           i <- i - 1
         }
         
-        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+        con <- dbConnect(RMariaDB::MariaDB(), port = credentials.port, host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
         setProgress(2/6)
@@ -459,7 +463,7 @@ server <- function(input, output, session){
         for (index in matchIndexes){
           kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
         }
-        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+        con <- dbConnect(RMariaDB::MariaDB(), port = credentials.port, host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
         setProgress(1/5)
@@ -537,7 +541,7 @@ server <- function(input, output, session){
         for (index in matchIndexes){
           kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
         }
-        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
+        con <- dbConnect(RMariaDB::MariaDB(), port = credentials.port, host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
         setProgress(1/7)
@@ -733,7 +737,7 @@ server <- function(input, output, session){
         for (index in matchIndexes){
           kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
         }
-        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+        con <- dbConnect(RMariaDB::MariaDB(), port = credentials.port, host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
         setProgress(1/3)
