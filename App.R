@@ -481,19 +481,21 @@ server <- function(input, output, session){
         q9 <- format(input$dateRange[2]) #End date
         q10 <- '" group by ak.kompetence_id order by amount desc limit 30'
         
-        q2 <- ' ak.kompetence_id IN ('
+        q2 <- ' ak.kompetence_id IN (select max(komp._id) from kompetence komp where komp._id in ('
         for (i in 1:length(kompetenceIds)){
           if (i < length(kompetenceIds)){
             q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
           }
           else{
-            q2 <- paste0(q2, kompetenceIds[i],') ')
+            q2 <- paste0(q2, kompetenceIds[i],') group by komp.prefferredLabel) ')
           }
         }
 
         setProgress(2/5)
         qq <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)
+        
         kompetenceData <- dbGetQuery(con, qq)
+        
         
         dbDisconnect(con)
         
