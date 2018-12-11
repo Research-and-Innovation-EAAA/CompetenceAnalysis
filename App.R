@@ -25,35 +25,36 @@ ui <- fluidPage(
            tags$h3("Kompetencer"),
            wellPanel(
              shinyTree("kompetenceTree", checkbox = TRUE),
-             textInput(inputId = "searchField", label = "Søgefelt"),
+             fluidRow(style = "margin-top: 15px;"),
              fluidRow(
                column(4,
                       selectInput(inputId = "availableCategories",
                                   label = "Tilgængelige:",
-                                  size = 20,
+                                  size = 8,
                                   selectize = FALSE,
                                   multiple = TRUE,
                                   choices = list(),
                                   width = "100%"
                       )
                ),
-               column(4, align = "center", style = "margin-top: 75px;",
-                      actionButton("addAll", "Tilføj alle >>", width = 150),
-                      actionButton("add", "Tilføj >", width = 150),
-                      actionButton("remove", "< Fjern", width = 150),
-                      actionButton("removeAll", "<< Fjern alle", width = 150)    
+               column(4, align = "center", style = "margin-top: 25px;",
+                      actionButton("addAll", "Tilføj alle >>", width = 100),
+                      actionButton("add", "Tilføj >", width = 100),
+                      actionButton("remove", "< Fjern", width = 100),
+                      actionButton("removeAll", "<< Fjern alle", width = 100)    
                ),
                column(4, 
                       selectInput(inputId = "selectedCategories",
                                   label = "Valgte:",
-                                  size = 20,
+                                  size = 8,
                                   selectize = FALSE,
                                   multiple = TRUE,
                                   choices = list(),
                                   width = "100%"
                       )
                )
-             )
+             ),
+             textInput(inputId = "searchField", label = "Filter")
            ),
            tags$h3("Annoncer"),
            wellPanel(
