@@ -468,7 +468,7 @@ server <- function(input, output, session){
         stopifnot(is.object(con))
         
         setProgress(1/5)
-        q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
+        q1 <- 'select distinct ak.k_prefferredLabel as prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak left join annonce a on ak.annonce_id = a._id where '
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
         q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
@@ -495,6 +495,7 @@ server <- function(input, output, session){
         setProgress(2/5)
         qq <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)
         
+        print(qq)
         kompetenceData <- dbGetQuery(con, qq)
         
         
