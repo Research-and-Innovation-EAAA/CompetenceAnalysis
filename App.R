@@ -468,15 +468,15 @@ server <- function(input, output, session){
         stopifnot(is.object(con))
         
         setProgress(1/5)
-        q1 <- 'select distinct ak.k_prefferredLabel as prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak left join annonce a on ak.annonce_id = a._id where '
+        q1 <- 'select distinct ak.k_prefferredLabel as prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak where '
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
-        q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
+        q3 <- ' and ak.a_region_id = (select r.region_id from region r where r.name = "'
         q4 <- input$regChoice            #region name
         q5 <- '")'
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
         ##############
-        q6 <- ' and a.timeStamp between "'
+        q6 <- ' and ak.a_timeStamp between "'
         q7 <- format(input$dateRange[1]) #Start date
         q8 <- '" and "'
         q9 <- format(input$dateRange[2]) #End date
