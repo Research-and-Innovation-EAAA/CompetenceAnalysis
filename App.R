@@ -495,7 +495,6 @@ server <- function(input, output, session){
         setProgress(2/5)
         qq <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)
         
-        print(qq)
         kompetenceData <- dbGetQuery(con, qq)
         
         
@@ -550,25 +549,29 @@ server <- function(input, output, session){
         
         setProgress(1/7)
         
-        q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
+        q1 <- 'select cast(ak.a_timeStamp as date) as date, count(ak.kompetence_id) as amount from annonce_kompetence ak where ak.kompetence_id = '
         #q2 is kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
-        q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
+        q3 <- ' and ak.a_region_id = (select r.region_id from region r where r.name = "'
         q4 <- input$regChoice            #region name
         q5 <- '")'
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region where-clause if the region is 'Alle regioner'
         ##############
-        q6 <- ' and a.timeStamp between "'
+        q6 <- ' and ak.a_timeStamp between "'
         q7 <- format(input$dateRange[1]) #Start date
         q8 <- '" and "'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '" group by cast(a.timeStamp as date)'
+        q10 <- '" group by cast(ak.a_timeStamp as date)'
+
         
         
         progressionData <- data.frame()
         for (id in kompetenceIds){
           q2 <- id
-          progressionData <- rbind(progressionData, dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)))
+          qq <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)
+                           
+          #print(qq)
+          progressionData <- rbind(progressionData, dbGetQuery(con, qq))
         }
         dbDisconnect(con)
         
