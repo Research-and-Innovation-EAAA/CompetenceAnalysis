@@ -38,10 +38,14 @@ ui <- fluidPage(
                       )
                ),
                column(4, align = "center", style = "margin-top: 25px;",
-                      actionButton("addAll", "Tilføj alle >>", width = 100),
-                      actionButton("add", "Tilføj >", width = 100),
-                      actionButton("remove", "< Fjern", width = 100),
-                      actionButton("removeAll", "<< Fjern alle", width = 100)    
+                      fluidRow(style = "margin-top: 15px;",
+                               actionButton("addAll", "Tilføj alle >>", width = 100),
+                               actionButton("add", "Tilføj >", width = 100)
+                      ),
+                      fluidRow(style = "margin-top: 15px;",
+                               actionButton("remove", "< Fjern", width = 100),
+                               actionButton("removeAll", "<< Fjern alle", width = 100)    
+                      )
                ),
                column(4, 
                       selectInput(inputId = "selectedCategories",
