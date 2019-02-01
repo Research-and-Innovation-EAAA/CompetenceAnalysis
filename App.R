@@ -508,13 +508,16 @@ server <- function(input, output, session){
           
           setProgress(4/5)
           output$kompetenceDiagram <- renderPlot({
+            
             par(mar = c(5,15,4,2) + 0.1)
-            barplot(kompetenceData$amount, 
+            ylim <- c(0, 1.1*max(kompetenceData$amount))
+            xx <- barplot(kompetenceData$amount, xlim = ylim, 
                     main=paste0("Kompetencer i jobopslag\n", input$regChoice, " fra ", input$dateRange[1], " til ", input$dateRange[2], "."), 
                     names.arg = kompetenceData$prefferredLabel,
                     las = 2,
                     horiz = TRUE
             )
+            text(y = xx, x = kompetenceData$amount, label = kompetenceData$amount, pos = 4, cex = 1.2, col = "blue")
           })
           output$kompetenceErrorField <- renderText("")
         }
@@ -570,7 +573,7 @@ server <- function(input, output, session){
           q2 <- id
           qq <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)
                            
-          #print(qq)
+          print(qq)
           progressionData <- rbind(progressionData, dbGetQuery(con, qq))
         }
         dbDisconnect(con)
@@ -706,7 +709,13 @@ server <- function(input, output, session){
           #print (paste0("a: ", a, ", b: ", b))
           
           output$progressionDiagram <- renderPlot({
-            barplot(formattedData$amount, names.arg = formattedData$date)
+
+            ylim <- c(0, 1.1*max(formattedData$amount))
+            xx <- barplot(formattedData$amount, ylim = ylim, 
+                    names.arg = formattedData$date)
+            
+            text(x = xx, y = formattedData$amount, label = formattedData$amount, pos = 3, cex = 1.2, col = "blue")
+            
             if (n > 1) 
             {
               #As of writing this code there is only data from about 4 months, so less than a year.
