@@ -480,11 +480,11 @@ server <- function(input, output, session){
         q5 <- '" '
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
         ##############
-        q6 <- ' and ak.a_timeStamp between "'
+        q6 <- ' and ak.a_timeStamp between DATE("'
         q7 <- format(input$dateRange[1]) #Start date
-        q8 <- '" and "'
+        q8 <- '") and DATE("'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '" group by ak.kompetence_id order by amount desc limit 30'
+        q10 <- '") group by ak.kompetence_id order by amount desc limit 30'
         
         q2 <- ' ak.kompetence_id IN (select max(komp._id) from kompetence komp where komp._id in ('
         for (i in 1:length(kompetenceIds)){
@@ -564,11 +564,11 @@ server <- function(input, output, session){
         q5 <- '" '
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region where-clause if the region is 'Alle regioner'
         ##############
-        q6 <- ' and ak.a_timeStamp between "'
+        q6 <- ' and ak.a_timeStamp between DATE("'
         q7 <- format(input$dateRange[1]) #Start date
-        q8 <- '" and "'
+        q8 <- '") and DATE("'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '" group by cast(ak.a_timeStamp as date)'
+        q10 <- '") group by cast(ak.a_timeStamp as date)'
 
         progressionData <- data.frame()
         for (id in kompetenceIds){
@@ -768,11 +768,11 @@ server <- function(input, output, session){
         q5 <- '" '
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
         ##############
-        q6 <- ' and ak.a_timeStamp between "'
+        q6 <- ' and ak.a_timeStamp between DATE("'
         q7 <- format(input$dateRange[1]) #Start date
-        q8 <- '" and "'
+        q8 <- '") and DATE("'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '" group by ak.annonce_id'
+        q10 <- '") group by ak.annonce_id'
         
         q2 <- ' ak.kompetence_id IN ('
         for (i in 1:length(kompetenceIds)){
