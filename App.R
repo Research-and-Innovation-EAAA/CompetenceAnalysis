@@ -556,8 +556,19 @@ server <- function(input, output, session){
         
         setProgress(1/7)
         
-        q1 <- 'select cast(ak.a_timeStamp as date) as date, count(ak.kompetence_id) as amount from annonce_kompetence ak where ak.kompetence_id = '
-        #q2 is kompetence id, set in loop due to it being the one iterated on.
+        periodQuery <- ""
+        if (input$progressionDateFormat == "Uge"){
+          periodQuery <- 'DATE_FORMAT(a_timeStamp,"%Y-%U")'
+        }
+        else if (input$progressionDateFormat == "Måned"){
+          periodQuery <- 'DATE_FORMAT(a_timeStamp,"%Y-%m")'
+        }
+        else if (input$progressionDateFormat == "År"){
+          periodQuery <- 'DATE_FORMAT(a_timeStamp,"%Y")'
+        }
+        
+        q0 <- paste0("select ", periodQuery)
+        q1 <- " period, count(*) amount from annonce_kompetence ak where ak.kompetence_id in "
         ####REGION####
         q3 <- ' and ak.a_region_name = "'
         q4 <- input$regChoice            #region name
@@ -568,124 +579,35 @@ server <- function(input, output, session){
         q7 <- format(input$dateRange[1]) #Start date
         q8 <- '") and DATE("'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '") group by cast(ak.a_timeStamp as date)'
+        q10 <- '") group by period order by period'
 
         progressionData <- data.frame()
-        for (id in kompetenceIds){
-          q2 <- id
-          qq <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)
-                           
-          #print(qq)
-          progressionData <- rbind(progressionData, dbGetQuery(con, qq))
+        q2 <- "("
+        for (i in 1:length(kompetenceIds)){
+          if (i < length(kompetenceIds)){
+            q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
+          }
+          else{
+            q2 <- paste0(q2, kompetenceIds[i],') ')
+          }
         }
+
+        qq <- paste0(q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)
+        print(qq)
+        formattedData <- rbind(progressionData, dbGetQuery(con, qq))
         dbDisconnect(con)
         
         setProgress(2/7)
-        progressionData <- progressionData %>% group_by(date) %>% summarize(amount = sum(amount))
-        progressionData <- progressionData[order(progressionData$date, decreasing = FALSE),]
-        format <- ""
-        if (input$progressionDateFormat == "Uge"){
-          format <- "%Y-%W"
-        }
-        else if (input$progressionDateFormat == "Måned"){
-          format <- "%Y-%m"
-        }
-        else if (input$progressionDateFormat == "År"){
-          format <- "%Y"
-        }
-        
+       
         setProgress(3/7)
-        formattedData <- progressionData %>% group_by(format(date, format)) %>% summarize(amount = sum(amount))
-        colnames(formattedData)[1] <- "date"
         
         setProgress(4/7)
         lastDate <- ""
         n <- nrow(formattedData)
+        
+        setProgress(5/7)
         if (n > 0){ ##### Check added to prevent crash when there's no job advertisements to be found
-          for (i in 1:n){
-            if (lastDate != ""){
-              
-              year <- as.numeric(substr(formattedData$date[i], 1, 4))
-              prevYear <- as.numeric(substr(lastDate, 1, 4))
-              yearDif <- year - prevYear
-              
-              if (format != "%Y"){ #Diagram split into weeks or months
-                if (yearDif == 0){
-                  lastPeriod <- as.numeric(strsplit(lastDate, "-")[[1]][2])
-                  currentPeriod <- as.numeric(strsplit(formattedData$date[i], "-")[[1]][2])
-                  if (lastPeriod + 1 != currentPeriod){
-                    missingPeriods <- currentPeriod - lastPeriod - 1
-                    
-                    for (j in (lastPeriod+1):(lastPeriod+missingPeriods)){
-                      if (j < 10){
-                        df <- data.frame(paste0(year, "-0", j), 0)
-                        names(df) <- c("date", "amount")
-                        formattedData <- rbind(formattedData, df)
-                      }
-                      else{
-                        df <- data.frame(paste0(year, "-", j), 0)
-                        names(df) <- c("date", "amount")
-                        formattedData <- rbind(formattedData, df)
-                      }
-                    }
-                  }
-                }
-                else{
-                  for (j in prevYear:year){
-                    lastPeriod <- 1;
-                    if (j == prevYear){
-                      lastPeriod <- as.numeric(substr(x = lastDate, length(lastDate)-1, length(lastDate)+1))
-                    }
-                    if (j < year){
-                      yearLength <- 52
-                      if (format == "%Y-%m"){
-                        yearLength <- 12
-                      }
-                      for (u in lastPeriod:yearLength){
-                        if (u < 10){
-                          df <- data.frame(paste0(j, "-0", u), 0)
-                          names(df) <- c("date", "amount")
-                          formattedData <- rbind(formattedData, df)
-                        }
-                        else{
-                          df <- data.frame(paste0(j, "-", u), 0)
-                          names(df) <- c("date", "amount")
-                          formattedData <- rbind(formattedData, df)
-                        }
-                      }
-                    }
-                    else{
-                      currentPeriod <- as.numeric(substr(x = formattedData$date[i], length(formattedData$date[i])-1, length(formattedData$date[i])+1))
-                      for (u in lastPeriod:currentPeriod-1){
-                        if (u < 10){
-                          df <- data.frame(paste0(j, "-0", u), 0)
-                          names(df) <- c("date", "amount")
-                          formattedData <- rbind(formattedData, df)
-                        }
-                        else{
-                          df <- data.frame(paste0(j, "-", u), 0)
-                          names(df) <- c("date", "amount")
-                          formattedData <- rbind(formattedData, df)
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-              else{ # Diagram split into years
-                for (j in (prevYear+1):(year-1)){
-                  df <- data.frame(toString(j), 0)
-                  names(df) <- c("date", "amount")
-                  formattedData <- rbind(formattedData, df)
-                }
-              }
-            }
-            lastDate <- formattedData$date[i]
-          }
-          
-          setProgress(5/7)
-          formattedData <- formattedData[order(formattedData$date, decreasing = FALSE),]
-          
+
           x <- 0
           y <- 0
           xy <- 0
@@ -699,7 +621,7 @@ server <- function(input, output, session){
             x2 <- x2 + (i)^2
             y2 <- y2 + formattedData$amount[i]^2
             
-            lastDate <- formattedData$date[i]
+            lastDate <- formattedData$period[i]
           }
           
           setProgress(6/7)
@@ -714,7 +636,7 @@ server <- function(input, output, session){
 
             ylim <- c(0, 1.1*max(formattedData$amount))
             xx <- barplot(formattedData$amount, ylim = ylim, 
-                    names.arg = formattedData$date)
+                    names.arg = formattedData$period)
             
             text(x = xx, y = formattedData$amount, label = formattedData$amount, pos = 3, cex = 1.2, col = "blue")
             
@@ -734,7 +656,6 @@ server <- function(input, output, session){
         }
         setProgress(1)
       })
-      
     }
     else{
       output$progressionErrorField <- renderText("")
