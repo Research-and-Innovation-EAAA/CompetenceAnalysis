@@ -567,8 +567,8 @@ server <- function(input, output, session){
           periodQuery <- 'DATE_FORMAT(a_timeStamp,"%Y")'
         }
         
-        q0 <- paste0("select ", periodQuery)
-        q1 <- " period, count(*) amount from annonce_kompetence ak where ak.kompetence_id in "
+        q0 <- paste0("select period, count(*) amount from (select DISTINCT ", periodQuery)
+        q1 <- " period, annonce_id from annonce_kompetence ak where ak.kompetence_id in "
         ####REGION####
         q3 <- ' and ak.a_region_name = "'
         q4 <- input$regChoice            #region name
@@ -579,7 +579,7 @@ server <- function(input, output, session){
         q7 <- format(input$dateRange[1]) #Start date
         q8 <- '") and DATE("'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '") group by period order by period'
+        q10 <- '")) matches group by period'
 
         progressionData <- data.frame()
         q2 <- "("
