@@ -24,7 +24,7 @@ ui <- fluidPage(
     column(6,
            tags$h3("Kompetencer"),
            wellPanel(
-             shinyTree("kompetenceTree", checkbox = TRUE),
+             shinyTree("tree", checkbox = TRUE),
              fluidRow(style = "margin-top: 15px;"),
              fluidRow(
                column(4,
@@ -136,8 +136,8 @@ server <- function(input, output, session){
     output$annonceCountField <- renderText(paste0(annonceCount, " jobannoncer"))
     setProgress(2/3)
     treeString <- dbGetQuery(con, 'select shinyTreeJSON from global where _id = 1')[1,1]
-    output$kompetenceTree <- renderEmptyTree()
-    updateTree(session,"kompetenceTree", treeString)
+    output$tree <- renderEmptyTree()
+    updateTree(session,"tree", treeString)
     setProgress(1)
   })
   
@@ -175,14 +175,13 @@ server <- function(input, output, session){
     }
   })
   
-  observeEvent(input$kompetenceTree, ignoreInit = TRUE, {
-    selectedList <- get_selected(input$kompetenceTree)
+  observeEvent(input$tree, ignoreInit = TRUE, {
+    selectedList <- get_selected(input$tree)
     if (!identical(lastShinyTree$tree, selectedList)){
       treeUpdateEffects()
       searchFieldEffects()
     }
   })
-  
   
   
   ########################################
@@ -373,7 +372,7 @@ server <- function(input, output, session){
   }
   
   treeUpdateEffects <- function(){
-    selectedList <- get_selected(input$kompetenceTree)
+    selectedList <- get_selected(input$tree)
     if (length(selectedList) > 0){
       withProgress(message = "Opdaterer tilgængelig list", expr = {
         setProgress(0)
@@ -593,7 +592,7 @@ server <- function(input, output, session){
         }
 
         qq <- paste0(q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)
-        print(qq)
+        #print(qq)
         formattedData <- rbind(progressionData, dbGetQuery(con, qq))
         dbDisconnect(con)
         
