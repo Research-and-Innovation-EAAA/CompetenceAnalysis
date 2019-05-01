@@ -512,8 +512,8 @@ server <- function(input, output, session){
           setProgress(4/5)
           output$kompetenceDiagram <- renderPlot({
             
-            par(mar = c(5,15,4,2) + 0.1)
-            ylim <- c(0, 1.1*max(kompetenceData$amount))
+            par(mar = c(5,18,4,2) + 0.1)
+            ylim <- c(0, 1.2*max(kompetenceData$amount))
             xx <- barplot(kompetenceData$amount, xlim = ylim, 
                     main=paste0("Kompetencer i jobopslag\n", input$regChoice, " fra ", input$dateRange[1], " til ", input$dateRange[2], "."), 
                     names.arg = kompetenceData$prefferredLabel,
