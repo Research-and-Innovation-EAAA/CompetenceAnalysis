@@ -536,7 +536,7 @@ server <- function(input, output, session){
       output$kompetenceDiagram <- NULL
     }
   }
-  
+ 
   updateProgressionDiagram <- function(){
     if(length(kompetencer$sk) != 0){
       withProgress(message = "Opdaterer diagram", expr = {
@@ -568,7 +568,7 @@ server <- function(input, output, session){
         
         q0 <- paste0("select ", periodQuery)
         q1 <- " period, count(DISTINCT annonce_id) amount from annonce_kompetence ak where ak.kompetence_id in "
-        ####REGION####
+ ####REGION####
         q3 <- ' and ak.a_region_name = "'
         q4 <- input$regChoice            #region name
         q5 <- '" '
@@ -613,7 +613,7 @@ server <- function(input, output, session){
           x2 <- 0
           y2 <- 0
           n <- nrow(formattedData)
-          for (i in 1:n){
+          for (i in 1:n) {
             x <- x + i
             y <- y + formattedData$amount[i]
             xy <- xy + ((i) * formattedData$amount[i])
@@ -627,14 +627,17 @@ server <- function(input, output, session){
           #print(paste0("x: ", x, ", y: ", y, ", xy: ", xy, ", x2: ", x2, ", y2: ", y2, ", n: ", n ))
           
           a <- (y * x2 - x * xy) / (n * x2 - x ^ 2)
-          b <- (n * xy - x * y) / (n * x2 - x ^ 2)
+            b <- (n * xy - x * y) / (n * x2 - x ^ 2)
+            v <- round(100*(b*(n+2))/a, digits=0)
           
-          #print (paste0("a: ", a, ", b: ", b))
+          #print (paste0("a: ", a, ", b: ", b, ", vækst: ", v, "%"))
           
           output$progressionDiagram <- renderPlot({
 
             ylim <- c(0, 1.1*max(formattedData$amount))
-            xx <- barplot(formattedData$amount, ylim = ylim, 
+            xx <- barplot(formattedData$amount, ylim = ylim,
+                          main=paste0(v, "% vækst i perioden"),
+                          xlabel="Antal annoncer",
                     names.arg = formattedData$period)
             
             text(x = xx, y = formattedData$amount, label = formattedData$amount, pos = 3, cex = 1.2, col = "blue")
