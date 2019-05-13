@@ -607,54 +607,44 @@ server <- function(input, output, session){
         setProgress(5/7)
         if (n > 0){ ##### Check added to prevent crash when there's no job advertisements to be found
 
-          x <- 0
-          y <- 0
-          xy <- 0
-          x2 <- 0
-          y2 <- 0
-          n <- nrow(formattedData)
-          for (i in 1:n) {
-            x <- x + i
-            y <- y + formattedData$amount[i]
-            xy <- xy + ((i) * formattedData$amount[i])
-            x2 <- x2 + (i)^2
-            y2 <- y2 + formattedData$amount[i]^2
-            
-            lastDate <- formattedData$period[i]
-          }
-          
-          setProgress(6/7)
-          #print(paste0("x: ", x, ", y: ", y, ", xy: ", xy, ", x2: ", x2, ", y2: ", y2, ", n: ", n ))
-          
-          a <- (y * x2 - x * xy) / (n * x2 - x ^ 2)
-            b <- (n * xy - x * y) / (n * x2 - x ^ 2)
-            v <- round(100*(b*(n+2))/a, digits=0)
-          
-          #print (paste0("a: ", a, ", b: ", b, ", vækst: ", v, "%"))
-          
-          output$progressionDiagram <- renderPlot({
+            n <- length(formattedData$amount)
 
-            ylim <- c(0, 1.1*max(formattedData$amount))
-            xx <- barplot(formattedData$amount, ylim = ylim,
-                          main=paste0(v, "% vækst i perioden"),
-                          xlabel="Antal annoncer",
-                    names.arg = formattedData$period)
+            fda <- c(formattedData$amount)
+            fdp <- c(1:n)
             
-            text(x = xx, y = formattedData$amount, label = formattedData$amount, pos = 3, cex = 1.2, col = "blue")
+            result <- lm( formula = fda ~ fdp ) 
+            a <- result$coefficients[1]
+            b <- result$coefficients[2]
+            v <- round(100*(b*(n+1))/a, digits=0)
             
-            if (n > 1) 
-            {
-              #As of writing this code there is only data from about 4 months, so less than a year.
-              #If n is 1 it will result in an error when doing regression, and it is currently 1 when choosing year.
-              abline(a=a, b=b, col = "red", lwd = 3)
-            }
-          })
-          
-          output$progressionErrorField <- renderText("")
+                                        # print (paste0("a: ", a, ", b: ", b, ", vækst: ", v, "%"))
+            
+            setProgress(6/7)
+
+            output$progressionDiagram <- renderPlot({
+
+                ylim <- c(0, 1.1*max(formattedData$amount))
+                xx <- barplot(formattedData$amount, ylim = ylim,
+                              main=paste0(v, "% vækst i perioden"),
+                              ylab="Antal annoncer",
+                              names.arg = formattedData$period)
+                
+                text(x = xx, y = formattedData$amount, label = formattedData$amount, pos = 3, cex = 1.2, col = "blue")
+                
+                if (n > 1) 
+                {
+                                        #As of writing this code there is only data from about 4 months, so less than a year.
+                                        #If n is 1 it will result in an error when doing regression, and it is currently 1 when choosing year.
+                                        #abline(a=a, b=b, col = "red", lwd = 3)
+                    abline(result, col = "red", lwd = 3)
+                }
+            })
+            
+            output$progressionErrorField <- renderText("")
         }
         else{
-          output$progressionDiagram <- NULL
-          output$progressionErrorField <- renderText("Ingen annoncer fundet.")
+            output$progressionDiagram <- NULL
+            output$progressionErrorField <- renderText("Ingen annoncer fundet.")
         }
         setProgress(1)
       })
