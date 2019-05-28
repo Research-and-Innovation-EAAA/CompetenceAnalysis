@@ -615,7 +615,7 @@ server <- function(input, output, session){
             result <- lm( formula = fda ~ fdp ) 
             a <- result$coefficients[1]
             b <- result$coefficients[2]
-            v <- round(100*(b*(n+1))/a, digits=0)
+            v <- round(100*(b*(n+1))/abs(a), digits=0)
             
                                         # print (paste0("a: ", a, ", b: ", b, ", vækst: ", v, "%"))
             
