@@ -11,15 +11,20 @@ ui <- fluidPage(
   fluidRow(style = "margin-top: 5px;",
     column(6, style = "margin-top: 15px", 
            titlePanel(title = "KOMPETENCEANALYSE", windowTitle = "Annonce Analyse"),
-           div(style = "font-size: 20px;", textOutput(outputId = "annonceCountField"))
+           div(style = "font-size: 20px;", textOutput(outputId = "annonceCountField")),
+           tags$span("Kilde: "),
+           tags$a(href="https://www.jobindex.dk","JobIndex"),
+           tags$span(" og "),
+           tags$a(href="https://www.careerjet.dk","CareerJet")
     ),
     column(6, style = "margin-top: 15px; text-align: right", img(src = "EAAA_Logo.jpg"))
   ),
   fluidRow(style = "border-bottom: 2px solid black; margin-top: 10px;"),
   
   fluidRow(style = "margin-top: 15px;",
+    
     column(6,
-           
+           tags$h3("Søgekriterier"),
            tabsetPanel(
              tabPanel(title = "Kompetencer",
            wellPanel(
@@ -88,29 +93,29 @@ ui <- fluidPage(
                                    width = "100%"
                        )
              ))
-           )),
-           tabPanel(title="Datafields",
-                    wellPanel(
-                      fluidRow(
+           ))#,
+           #tabPanel(title="Datafields",
+           #         wellPanel(
+           #           fluidRow(
                         
-                      )
-                    )
-            )
+           #           )
+           #         )
+           # )
            )
     ),
     column(6,
            fluidRow(
              column(4,
-                    tags$h3("Analyse")
-                    ),
-             column(8, 
-                    selectInput(inputId = "matchChoice",
-                                label = "Vælg matchsystem",
-                                choices = list("Ord Match", "Machine-Learned"),
-                                multiple = FALSE,
-                                width = "200px"
-                                )
+                    tags$h3("Søgeresultater")
                     )
+             #column(8, 
+             #       selectInput(inputId = "matchChoice",
+             #                   label = "Vælg matchsystem",
+             #                   choices = list("Ord Match", "Machine-Learned"),
+             #                   multiple = FALSE,
+             #                   width = "200px"
+             #                   )
+             #       )
            ),
            tabsetPanel(id = "outputPanel",
              tabPanel("Kompetencesammenligning",
@@ -566,9 +571,9 @@ server <- function(input, output, session){
         
         setProgress(1/5)
         q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
-        if (input$matchChoice == "Machine-Learned"){
-          q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
-        }
+        #if (input$matchChoice == "Machine-Learned"){
+        #  q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
+        #}
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
         q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
@@ -665,9 +670,9 @@ server <- function(input, output, session){
         setProgress(1/7)
         
         q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
-        if (input$matchChoice == "Machine-Learned"){
-          q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
-        }
+        #if (input$matchChoice == "Machine-Learned"){
+        #  q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
+        #}
         #q2 is kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
         q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
@@ -881,9 +886,9 @@ server <- function(input, output, session){
         setProgress(1/3)
         
         q1 <- 'select a._id, a.title from annonce a join annonce_kompetence ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where '
-        if (input$matchChoice == "Machine-Learned"){
-          q1 <- 'select a._id, a.title from annonce a join annonce_kompetence_machine ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where '
-        }
+        #if (input$matchChoice == "Machine-Learned"){
+        #  q1 <- 'select a._id, a.title from annonce a join annonce_kompetence_machine ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where '
+        #}
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
         q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
