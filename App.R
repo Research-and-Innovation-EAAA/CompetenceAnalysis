@@ -380,7 +380,7 @@ server <- function(input, output, session){
       id <- unlist(strsplit(input$annonceList, " "))[1]
       
       
-      annonceDataFields <- dbGetQuery(con,paste0('select dataValue, name from annonce_dataField join dataField where annonce_id = ',id,' and dataField._id = dataField_id'))
+      annonceDataFields <- dbGetQuery(con,paste0('select dataValue, name from annonce_datafield join datafield where annonce_id = ',id,' and datafield._id = dataField_id'))
       newdf <- data.frame()
       
       
@@ -388,7 +388,7 @@ server <- function(input, output, session){
       
       annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body from annonce where _id = ', id))
       
-      #annonceCvr <- dbGetQuery(con, paste0('select dataValue as cvr from annonce_dataField where dataField_id = (select dataField_id from dataField where dataField.name = "cvr") and annonce_id = ', id))
+      #annonceCvr <- dbGetQuery(con, paste0('select dataValue as cvr from annonce_datafield where dataField_id = (select dataField_id from datafield where datafield.name = "cvr") and annonce_id = ', id))
       #annonceTitle <- dbGetQuery(con,paste0('select title from annonce where _id = ', id))
       
       #if(is.na(annonceCvr[1,1])){
