@@ -93,14 +93,52 @@ ui <- fluidPage(
                                    width = "100%"
                        )
              ))
-           ))#,
-           #tabPanel(title="Datafields",
-           #         wellPanel(
-           #           fluidRow(
+           )),
+           tabPanel(title="Datafields",
+                    wellPanel(
+                      fluidRow(
+                        column(12,
+                                      selectInput(inputId = "dataFieldChoice",
+                                                  label = "Vælg datafield at søge efter", 
+                                                  choices = {
+                                                  con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+                                                  stopifnot(is.object(con))
+                                                  dataFieldNames <- dbGetQuery(con,'select name from dataField')
+                                                  dbDisconnect(con) 
+                                                  choices = dataFieldNames},
+                                                  multiple = FALSE, 
+                                                  width = "500px"
+                                      ),
+                               column(4,
+                                      selectInput(inputId = "availableDataFields",
+                                                  label = "Tilgængelige:",
+                                                  size = 20,
+                                                  selectize = FALSE,
+                                                  multiple = TRUE,
+                                                  choices = list(),
+                                                  width = "100%"
+                                      )
+                               ),
+                               column(4, align = "center", style = "margin-top: 75px;",
+                                      actionButton("addDataField", "Tilføj >", width = 150),
+                                      actionButton("removeDataField", "< Fjern", width = 150),
+                                      actionButton("removeAllDataFields", "<< Fjern alle", width = 150)    
+                               ),
+                               column(4, 
+                                      selectInput(inputId = "selectedDataFields",
+                                                  label = "Valgte:",
+                                                  size = 20,
+                                                  selectize = FALSE,
+                                                  multiple = TRUE,
+                                                  choices = list(),
+                                                  width = "100%"
+                                      )
+                               )        
+                      )
                         
-           #           )
-           #         )
-           # )
+                      )
+                    )
+            )
            )
     ),
     column(6,
@@ -160,7 +198,7 @@ ui <- fluidPage(
 
 server <- function(input, output, session){
   kompetencer <- reactiveValues(ak = NULL, sk = list(), fk = list())
-  datafields <- reactiveValues(titles = list())
+  datafields <- reactiveValues(titles = list(),selectedDataFields = list(), availableDataFields = list())
   current <- reactiveValues(tab = 1)
   tabUpdates <- reactiveValues(kompetence = FALSE, progression = FALSE, annonce = FALSE)
   lastShinyTree <- reactiveValues(tree = list())
@@ -189,6 +227,10 @@ server <- function(input, output, session){
   observeEvent(input$regChoice, ignoreInit = TRUE, {
     updateCurrentTab()
   })
+  
+  observeEvent(input$dataFieldChoice,{
+    updateDataFields()
+  }) 
   
   observeEvent(input$outputPanel, ignoreInit = TRUE, {
     if (input$outputPanel == "Kompetencesammenligning"){
@@ -333,7 +375,31 @@ server <- function(input, output, session){
       setProgress(1)
     })
   })
+  observeEvent(input$addDataField, {
+    if (!is.null(input$availableDataFields)){
+        datafields$selectedDataFields <- c(datafields$selectedDataFields, input$availableDataFields)
+        updateSelectInput(session,
+                          inputId = "selectedDataFields", 
+                          choices = datafields$selectedDataFields
+        )
+        updateCurrentTab()
+      
+    }
+  })
   
+  observeEvent(input$removeDataField, {
+    if (!is.null(input$selectedDataFields)){
+      datafields$selectedDataFields <- datafields$selectedDataFields[!datafields$selectedDataFields %in% input$selectedDataFields]
+      updateSelectInput(session,inputId = "selectedDataFields", choices = datafields$selectedDataFields)
+      updateCurrentTab()
+    }
+  })
+  
+  observeEvent(input$removeAllDataFields, {
+    datafields$selectedDataFields <- datafields$selectedDataFields[!datafields$selectedDataFields %in% datafields$selectedDataFields]
+    updateSelectInput(session,inputId = "selectedDataFields", choices = datafields$selectedDataFields)
+    updateCurrentTab()
+  })
   observeEvent(input$addTitle,{
     if(input$titleSearchField != ""){
       datafields$titles <- c(datafields$titles,input$titleSearchField)
@@ -388,18 +454,7 @@ server <- function(input, output, session){
       
       annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body from annonce where _id = ', id))
       
-      #annonceCvr <- dbGetQuery(con, paste0('select dataValue as cvr from annonce_dataField where dataField_id = (select dataField_id from dataField where dataField.name = "cvr") and annonce_id = ', id))
-      #annonceTitle <- dbGetQuery(con,paste0('select title from annonce where _id = ', id))
       
-      #if(is.na(annonceCvr[1,1])){
-      #  annonceCvr[1,1] <- "Ikke oplyst"
-      #} else {
-      #  annonceCvr[1,1] <- gsub(" ", "", annonceCvr[1,1], fixed = TRUE) #remove whitespaces from cvr.
-      #}
-      
-      
-      #create data frame to be put in table.
-      #df <- data.frame(c(annonceTitle[1,1],annonceCvr[1,1]))
       if(nrow(annonceDataFields)== 0){
         annonceDataFields <- data.frame("Ingen tilgængelige cvr oplysninger")
         names(annonceDataFields) <- c("") #remove column headers
@@ -422,6 +477,24 @@ server <- function(input, output, session){
   })
   
   ############################################################     FUNCTIONS     ############################################################
+  
+    updateDataFields <- function(){
+    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+    stopifnot(is.object(con))
+    
+    datafields <- dbGetQuery(con, paste0("select distinct dataValue from annonce_dataField where (select _id from dataField where name = '", input$dataFieldChoice, "') = dataField_id"))
+    
+    
+    updateSelectInput(session,
+                      inputId = "availableDataFields",
+                      choices = datafields
+    )
+    
+    datafields$availableDataFields <- datafields
+    
+    dbDisconnect(con)
+    
+    }
   
   updateCurrentTab <- function(){
     if (current$tab == 1){
@@ -587,7 +660,7 @@ server <- function(input, output, session){
         q9 <- format(input$dateRange[2]) #End date
         q10 <- '" and title regexp "'
         titleRegexp <- ""
-        if(length(datafields$titles) > 0){ #check if user has entered any search times
+        if(length(datafields$titles) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$titles)){
             if(i == 1){
               titleRegexp <- datafields$titles[i]
@@ -610,11 +683,9 @@ server <- function(input, output, session){
         }
 
         setProgress(2/5)
-        if(titleRegexp == ""){
-           qq <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q12)
-        } else {
-          qq <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12)
-        }
+        
+        qq <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12)
+        
        
         kompetenceData <- dbGetQuery(con, qq)
         
@@ -686,7 +757,7 @@ server <- function(input, output, session){
         q9 <- format(input$dateRange[2]) #End date
         q10 <- '" and title regexp "'
         titleRegexp <- ""
-        if(length(datafields$titles) > 0){ #check if user has entered any search times
+        if(length(datafields$titles) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$titles)){
             if(i == 1){
               titleRegexp <- datafields$titles[i]
@@ -702,11 +773,9 @@ server <- function(input, output, session){
         progressionData <- data.frame()
         for (id in kompetenceIds){
           q2 <- id
-          if(titleRegexp == "") {
-            progressionData <- rbind(progressionData, dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q12)))
-          } else {
-            progressionData <- rbind(progressionData, dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11, q12)))
-          }
+          
+          progressionData <- rbind(progressionData, dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11, q12)))
+          
           
         }
         dbDisconnect(con)
@@ -900,9 +969,9 @@ server <- function(input, output, session){
         q7 <- format(input$dateRange[1]) #Start date
         q8 <- '" and "'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '" and title regexp "'
-        titleRegexp <- ""
-        if(length(datafields$titles) > 0){ #check if user has entered any search times
+        q10 <- '" and title regexp '
+        titleRegexp <- "" 
+        if(length(datafields$titles) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$titles)){
             if(i == 1){
               titleRegexp <- datafields$titles[i]
@@ -911,8 +980,25 @@ server <- function(input, output, session){
             }
           }
         }
-        q11 <- titleRegexp
-        q12 <- '" group by a._id'
+        q11 <- paste0("'",titleRegexp,"'")
+        q12 <- ' and a._id in (select annonce_id from annonce_dataField where dataValue regexp '
+        datafieldsRegexp <- ""
+        if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
+          for(i in 1:length(datafields$selectedDataFields)){
+            if(i == 1){
+              datafieldsRegexp <- datafields$selectedDataFields[i]
+            } else {
+              datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
+            }
+          }
+        }
+        q13 <- paste0("'", datafieldsRegexp, "'")
+        q14 <- ')'
+        print(datafieldsRegexp)
+        if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
+         
+        
+        q15 <- ' group by a._id'
         
         q2 <- ' ak.kompetence_id IN ('
         for (i in 1:length(kompetenceIds)){
@@ -923,13 +1009,12 @@ server <- function(input, output, session){
             q2 <- paste0(q2, kompetenceIds[i],') ')
           }
         }
-        if(titleRegexp == "") { 
-          query <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q12)
-        } else {
-          query <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11,q12)
-        }
         
+        query <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11,q12,q13,q14,q15)
+        
+        print(paste0(q7, q8, q9,q10,q11,q12,q13,q14,q15))
         annonceData <- dbGetQuery(con,query)
+        print(annonceData)
         
         dbDisconnect(con)
         
