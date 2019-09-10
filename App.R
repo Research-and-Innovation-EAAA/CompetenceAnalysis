@@ -455,7 +455,9 @@ server <- function(input, output, session){
       id <- unlist(strsplit(input$annonceList, " "))[1]
       
       
-      annonceDataFields <- dbGetQuery(con,paste0('select dataValue, name from annonce_datafield join datafield where annonce_id = ',id,' and datafield._id = datafield_id'))
+
+      annonceDataFields <- dbGetQuery(con,paste0('select dataValue, name from annonce_datafield join datafield where annonce_id = ',id,' and datafield._id = dataField_id'))
+
       newdf <- data.frame()
       
       
@@ -463,6 +465,7 @@ server <- function(input, output, session){
       
       annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body from annonce where _id = ', id))
       
+
       
       if(nrow(annonceDataFields)== 0){
         annonceDataFields <- data.frame("Ingen tilgængelige cvr oplysninger")
