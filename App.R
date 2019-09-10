@@ -9,7 +9,7 @@ source('credentials.R')
 
 ui <- fluidPage(
   fluidRow(style = "margin-top: 5px;",
-    column(6, style = "margin-top: 15px", 
+    column(6, style = "margin-top: 0px; font-size: 16px;", 
            titlePanel(title = "KOMPETENCEANALYSE", windowTitle = "Annonce Analyse"),
            div(style = "font-size: 20px;", textOutput(outputId = "annonceCountField")),
            tags$span("Kilde: "),
@@ -17,7 +17,7 @@ ui <- fluidPage(
            tags$span(" og "),
            tags$a(href="https://www.careerjet.dk","CareerJet")
     ),
-    column(6, style = "margin-top: 15px; text-align: right", img(src = "EAAA_Logo.jpg"))
+    column(6, style = "margin-top: 5px; text-align: right", img(src = "EAAA_Logo.jpg"))
   ),
   fluidRow(style = "border-bottom: 2px solid black; margin-top: 10px;"),
   
@@ -28,8 +28,8 @@ ui <- fluidPage(
            tabsetPanel(
              tabPanel(title = "Kompetencer",
            wellPanel(
-             shinyTree("kompetenceTree", checkbox = TRUE),
-             textInput(inputId = "searchField", label = "Søgefelt"),
+             shinyTree("tree", checkbox = TRUE),
+             fluidRow(style = "margin-top: 15px;"),
              fluidRow(
                column(4,
                       selectInput(inputId = "availableCategories",
@@ -41,11 +41,15 @@ ui <- fluidPage(
                                   width = "100%"
                       )
                ),
-               column(4, align = "center", style = "margin-top: 75px;",
-                      actionButton("addAll", "Tilføj alle >>", width = 150),
-                      actionButton("add", "Tilføj >", width = 150),
-                      actionButton("remove", "< Fjern", width = 150),
-                      actionButton("removeAll", "<< Fjern alle", width = 150)    
+               column(4, align = "center", style = "margin-top: 25px;",
+                      fluidRow(style = "margin-top: 15px;",
+                               actionButton("addAll", "Tilføj alle >>", width = 100),
+                               actionButton("add", "Tilføj >", width = 100)
+                      ),
+                      fluidRow(style = "margin-top: 15px;",
+                               actionButton("remove", "< Fjern", width = 100),
+                               actionButton("removeAll", "<< Fjern alle", width = 100)    
+                      )
                ),
                column(4, 
                       selectInput(inputId = "selectedCategories",
@@ -57,7 +61,8 @@ ui <- fluidPage(
                                   width = "100%"
                       )
                )
-             ))
+             ),
+             textInput(inputId = "searchField", label = "Filter")
            ),
            tabPanel(title="Annoncer",
            wellPanel(
@@ -215,11 +220,11 @@ server <- function(input, output, session){
     fullCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id, grp from kompetence order by prefferredLabel asc')
     setProgress(1/3)
     annonceCount <- dbGetQuery(con, 'select count(*) from annonce')[1,1]
-    output$annonceCountField <- renderText(paste0("(", annonceCount, " Annoncer)"))
+    output$annonceCountField <- renderText(paste0(annonceCount, " jobannoncer"))
     setProgress(2/3)
     treeString <- dbGetQuery(con, 'select shinyTreeJSON from global where _id = 1')[1,1]
-    output$kompetenceTree <- renderEmptyTree()
-    updateTree(session,"kompetenceTree", treeString)
+    output$tree <- renderEmptyTree()
+    updateTree(session,"tree", treeString)
     setProgress(1)
   })
   
@@ -265,14 +270,13 @@ server <- function(input, output, session){
     }
   })
   
-  observeEvent(input$kompetenceTree, ignoreInit = TRUE, {
-    selectedList <- get_selected(input$kompetenceTree)
+  observeEvent(input$tree, ignoreInit = TRUE, {
+    selectedList <- get_selected(input$tree)
     if (!identical(lastShinyTree$tree, selectedList)){
       treeUpdateEffects()
       searchFieldEffects()
     }
   })
-  
   
   
   ########################################
@@ -449,7 +453,7 @@ server <- function(input, output, session){
   observeEvent(input$annonceList, {
     withProgress(message = "Finder annoncetekst", expr = {
       setProgress(0)
-      con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+      con <- dbConnect(RMariaDB::MariaDB(), port = credentials.port, host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
       stopifnot(is.object(con))
       
       id <- unlist(strsplit(input$annonceList, " "))[1]
@@ -563,7 +567,7 @@ server <- function(input, output, session){
   }
   
   treeUpdateEffects <- function(){
-    selectedList <- get_selected(input$kompetenceTree)
+    selectedList <- get_selected(input$tree)
     if (length(selectedList) > 0){
       withProgress(message = "Opdaterer tilgængelig list", expr = {
         setProgress(0)
@@ -668,14 +672,14 @@ server <- function(input, output, session){
         #}
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
-        q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
+        q3 <- ' and ak.a_region_name = "'
         q4 <- input$regChoice            #region name
-        q5 <- '")'
+        q5 <- '" '
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
         ##############
-        q6 <- ' and a.timeStamp between "'
+        q6 <- ' and ak.a_timeStamp between DATE("'
         q7 <- format(input$dateRange[1]) #Start date
-        q8 <- '" and "'
+        q8 <- '") and DATE("'
         q9 <- format(input$dateRange[2]) #End date
         q10 <- '" and title regexp '
         titleRegexp <- ""
@@ -705,13 +709,13 @@ server <- function(input, output, session){
         if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
         q15 <- ' group by ak.kompetence_id order by amount desc limit 30'
         
-        q2 <- ' ak.kompetence_id IN ('
+        q2 <- ' ak.kompetence_id IN (select max(komp._id) from kompetence komp where komp._id in ('
         for (i in 1:length(kompetenceIds)){
           if (i < length(kompetenceIds)){
             q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
           }
           else{
-            q2 <- paste0(q2, kompetenceIds[i],') ')
+            q2 <- paste0(q2, kompetenceIds[i],') group by komp.prefferredLabel) ')
           }
         }
 
@@ -721,6 +725,7 @@ server <- function(input, output, session){
         
        
         kompetenceData <- dbGetQuery(con, qq)
+        
         
         dbDisconnect(con)
         
@@ -732,13 +737,16 @@ server <- function(input, output, session){
           
           setProgress(4/5)
           output$kompetenceDiagram <- renderPlot({
-            par(mar = c(5,15,4,2) + 0.1)
-            barplot(kompetenceData$amount, 
+            
+            par(mar = c(5,18,4,2) + 0.1)
+            ylim <- c(0, 1.2*max(kompetenceData$amount))
+            xx <- barplot(kompetenceData$amount, xlim = ylim, 
                     main=paste0("Kompetencer i jobopslag\n", input$regChoice, " fra ", input$dateRange[1], " til ", input$dateRange[2], "."), 
                     names.arg = kompetenceData$prefferredLabel,
                     las = 2,
                     horiz = TRUE
             )
+            text(y = xx, x = kompetenceData$amount, label = kompetenceData$amount, pos = 4, cex = 1.2, col = "blue")
           })
           output$kompetenceErrorField <- renderText("")
         }
@@ -754,7 +762,7 @@ server <- function(input, output, session){
       output$kompetenceDiagram <- NULL
     }
   }
-  
+ 
   updateProgressionDiagram <- function(){
     if(length(kompetencer$sk) != 0){
       withProgress(message = "Opdaterer diagram", expr = {
@@ -773,20 +781,32 @@ server <- function(input, output, session){
         
         setProgress(1/7)
         
-        q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
+        periodQuery <- ""
+        if (input$progressionDateFormat == "Uge"){
+          periodQuery <- 'DATE_FORMAT(a_timeStamp,"%Y-%U")'
+        }
+        else if (input$progressionDateFormat == "Måned"){
+          periodQuery <- 'DATE_FORMAT(a_timeStamp,"%Y-%m")'
+        }
+        else if (input$progressionDateFormat == "År"){
+          periodQuery <- 'DATE_FORMAT(a_timeStamp,"%Y")'
+        }
+        
+        q0 <- paste0("select ", periodQuery)
+        q1 <- " period, count(DISTINCT annonce_id) amount from annonce_kompetence ak where ak.kompetence_id in "
         #if (input$matchChoice == "Machine-Learned"){
         #  q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
         #}
         #q2 is kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
-        q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
+        q3 <- ' and ak.a_region_name = "'
         q4 <- input$regChoice            #region name
-        q5 <- '")'
+        q5 <- '" '
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region where-clause if the region is 'Alle regioner'
         ##############
-        q6 <- ' and a.timeStamp between "'
+        q6 <- ' and ak.a_timeStamp between DATE("'
         q7 <- format(input$dateRange[1]) #Start date
-        q8 <- '" and "'
+        q8 <- '") and DATE("'
         q9 <- format(input$dateRange[2]) #End date
         q10 <- '" and title regexp '
         titleRegexp <- ""
@@ -825,157 +845,64 @@ server <- function(input, output, session){
           
           
         }
+
+        qq <- paste0(q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)
+        #print(qq)
+        formattedData <- rbind(progressionData, dbGetQuery(con, qq))
         dbDisconnect(con)
         
         setProgress(2/7)
-        progressionData <- progressionData %>% group_by(date) %>% summarize(amount = sum(amount))
-        progressionData <- progressionData[order(progressionData$date, decreasing = FALSE),]
-        format <- ""
-        if (input$progressionDateFormat == "Uge"){
-          format <- "%Y-%W"
-        }
-        else if (input$progressionDateFormat == "Måned"){
-          format <- "%Y-%m"
-        }
-        else if (input$progressionDateFormat == "År"){
-          format <- "%Y"
-        }
-        
+       
         setProgress(3/7)
-        formattedData <- progressionData %>% group_by(format(date, format)) %>% summarize(amount = sum(amount))
-        colnames(formattedData)[1] <- "date"
         
         setProgress(4/7)
         lastDate <- ""
         n <- nrow(formattedData)
+        
+        setProgress(5/7)
         if (n > 0){ ##### Check added to prevent crash when there's no job advertisements to be found
-          for (i in 1:n){
-            if (lastDate != ""){
-              
-              year <- as.numeric(substr(formattedData$date[i], 1, 4))
-              prevYear <- as.numeric(substr(lastDate, 1, 4))
-              yearDif <- year - prevYear
-              
-              if (format != "%Y"){ #Diagram split into weeks or months
-                if (yearDif == 0){
-                  lastPeriod <- as.numeric(strsplit(lastDate, "-")[[1]][2])
-                  currentPeriod <- as.numeric(strsplit(formattedData$date[i], "-")[[1]][2])
-                  if (lastPeriod + 1 != currentPeriod){
-                    missingPeriods <- currentPeriod - lastPeriod - 1
-                    
-                    for (j in (lastPeriod+1):(lastPeriod+missingPeriods)){
-                      if (j < 10){
-                        df <- data.frame(paste0(year, "-0", j), 0)
-                        names(df) <- c("date", "amount")
-                        formattedData <- rbind(formattedData, df)
-                      }
-                      else{
-                        df <- data.frame(paste0(year, "-", j), 0)
-                        names(df) <- c("date", "amount")
-                        formattedData <- rbind(formattedData, df)
-                      }
-                    }
-                  }
-                }
-                else{
-                  for (j in prevYear:year){
-                    lastPeriod <- 1;
-                    if (j == prevYear){
-                      lastPeriod <- as.numeric(substr(x = lastDate, length(lastDate)-1, length(lastDate)+1))
-                    }
-                    if (j < year){
-                      yearLength <- 52
-                      if (format == "%Y-%m"){
-                        yearLength <- 12
-                      }
-                      for (u in lastPeriod:yearLength){
-                        if (u < 10){
-                          df <- data.frame(paste0(j, "-0", u), 0)
-                          names(df) <- c("date", "amount")
-                          formattedData <- rbind(formattedData, df)
-                        }
-                        else{
-                          df <- data.frame(paste0(j, "-", u), 0)
-                          names(df) <- c("date", "amount")
-                          formattedData <- rbind(formattedData, df)
-                        }
-                      }
-                    }
-                    else{
-                      currentPeriod <- as.numeric(substr(x = formattedData$date[i], length(formattedData$date[i])-1, length(formattedData$date[i])+1))
-                      for (u in lastPeriod:currentPeriod-1){
-                        if (u < 10){
-                          df <- data.frame(paste0(j, "-0", u), 0)
-                          names(df) <- c("date", "amount")
-                          formattedData <- rbind(formattedData, df)
-                        }
-                        else{
-                          df <- data.frame(paste0(j, "-", u), 0)
-                          names(df) <- c("date", "amount")
-                          formattedData <- rbind(formattedData, df)
-                        }
-                      }
-                    }
-                  }
-                }
-              }
-              else{ # Diagram split into years
-                for (j in (prevYear+1):(year-1)){
-                  df <- data.frame(toString(j), 0)
-                  names(df) <- c("date", "amount")
-                  formattedData <- rbind(formattedData, df)
-                }
-              }
-            }
-            lastDate <- formattedData$date[i]
-          }
-          
-          setProgress(5/7)
-          formattedData <- formattedData[order(formattedData$date, decreasing = FALSE),]
-          
-          x <- 0
-          y <- 0
-          xy <- 0
-          x2 <- 0
-          y2 <- 0
-          n <- nrow(formattedData)
-          for (i in 1:n){
-            x <- x + i
-            y <- y + formattedData$amount[i]
-            xy <- xy + ((i) * formattedData$amount[i])
-            x2 <- x2 + (i)^2
-            y2 <- y2 + formattedData$amount[i]^2
+
+            n <- length(formattedData$amount)
+
+            fda <- c(formattedData$amount)
+            fdp <- c(1:n)
             
-            lastDate <- formattedData$date[i]
-          }
-          
-          setProgress(6/7)
-          #print(paste0("x: ", x, ", y: ", y, ", xy: ", xy, ", x2: ", x2, ", y2: ", y2, ", n: ", n ))
-          
-          a <- (y * x2 - x * xy) / (n * x2 - x ^ 2)
-          b <- (n * xy - x * y) / (n * x2 - x ^ 2)
-          
-          #print (paste0("a: ", a, ", b: ", b))
-          
-          output$progressionDiagram <- renderPlot({
-            barplot(formattedData$amount, names.arg = formattedData$date)
-            if (n > 1) 
-            {
-              #As of writing this code there is only data from about 4 months, so less than a year.
-              #If n is 1 it will result in an error when doing regression, and it is currently 1 when choosing year.
-              abline(a=a, b=b, col = "red", lwd = 3)
-            }
-          })
-          
-          output$progressionErrorField <- renderText("")
+            result <- lm( formula = fda ~ fdp ) 
+            a <- result$coefficients[1]
+            b <- result$coefficients[2]
+            v <- round(100*(b*(n+1))/abs(a), digits=0)
+            
+                                        # print (paste0("a: ", a, ", b: ", b, ", vækst: ", v, "%"))
+            
+            setProgress(6/7)
+
+            output$progressionDiagram <- renderPlot({
+
+                ylim <- c(0, 1.1*max(formattedData$amount))
+                xx <- barplot(formattedData$amount, ylim = ylim,
+                              main=paste0(v, "% vækst i perioden"),
+                              ylab="Antal annoncer",
+                              names.arg = formattedData$period)
+                
+                text(x = xx, y = formattedData$amount, label = formattedData$amount, pos = 3, cex = 1.2, col = "blue")
+                
+                if (n > 1) 
+                {
+                                        #As of writing this code there is only data from about 4 months, so less than a year.
+                                        #If n is 1 it will result in an error when doing regression, and it is currently 1 when choosing year.
+                                        #abline(a=a, b=b, col = "red", lwd = 3)
+                    abline(result, col = "red", lwd = 3)
+                }
+            })
+            
+            output$progressionErrorField <- renderText("")
         }
         else{
-          output$progressionDiagram <- NULL
-          output$progressionErrorField <- renderText("Ingen annoncer fundet.")
+            output$progressionDiagram <- NULL
+            output$progressionErrorField <- renderText("Ingen annoncer fundet.")
         }
         setProgress(1)
       })
-      
     }
     else{
       output$progressionErrorField <- renderText("")
@@ -996,25 +923,22 @@ server <- function(input, output, session){
         for (index in matchIndexes){
           kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
         }
-        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+        con <- dbConnect(RMariaDB::MariaDB(), port = credentials.port, host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
         setProgress(1/3)
         
-        q1 <- 'select a._id, a.title from annonce a join annonce_kompetence ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where '
-        #if (input$matchChoice == "Machine-Learned"){
-        #  q1 <- 'select a._id, a.title from annonce a join annonce_kompetence_machine ak on a._id = ak.annonce_id join kompetence k on ak.kompetence_id = k._id where '
-        #}
+        q1 <- 'select ak.annonce_id, ak.a_title from annonce_kompetence ak where '
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
-        q3 <- ' and a.region_id = (select r.region_id from region r where r.name = "'
+        q3 <- ' and ak.a_region_name = "'
         q4 <- input$regChoice            #region name
-        q5 <- '")'
+        q5 <- '" '
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
         ##############
-        q6 <- ' and a.timeStamp between "'
+        q6 <- ' and ak.a_timeStamp between DATE("'
         q7 <- format(input$dateRange[1]) #Start date
-        q8 <- '" and "'
+        q8 <- '") and DATE("'
         q9 <- format(input$dateRange[2]) #End date
         q10 <- '" and title regexp '
         titleRegexp <- "" 
