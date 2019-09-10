@@ -658,7 +658,7 @@ server <- function(input, output, session){
         q7 <- format(input$dateRange[1]) #Start date
         q8 <- '" and "'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '" and title regexp "'
+        q10 <- '" and title regexp '
         titleRegexp <- ""
         if(length(datafields$titles) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$titles)){
@@ -669,8 +669,22 @@ server <- function(input, output, session){
             }
           }
         }
-        q11 <- titleRegexp
-        q12 <- '" group by ak.kompetence_id order by amount desc limit 30'
+        q11 <- paste0('"',titleRegexp,'"')
+        q12 <- ' and a._id in (select annonce_id from annonce_dataField where dataValue regexp '
+        datafieldsRegexp <- ""
+        if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
+          for(i in 1:length(datafields$selectedDataFields)){
+            if(i == 1){
+              datafieldsRegexp <- datafields$selectedDataFields[i]
+            } else {
+              datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
+            }
+          }
+        }
+        q13 <- paste0("'", datafieldsRegexp, "'")
+        q14 <- ')'
+        if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
+        q15 <- ' group by ak.kompetence_id order by amount desc limit 30'
         
         q2 <- ' ak.kompetence_id IN ('
         for (i in 1:length(kompetenceIds)){
@@ -684,7 +698,7 @@ server <- function(input, output, session){
 
         setProgress(2/5)
         
-        qq <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12)
+        qq <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12,q13,q14,q15)
         
        
         kompetenceData <- dbGetQuery(con, qq)
@@ -755,7 +769,7 @@ server <- function(input, output, session){
         q7 <- format(input$dateRange[1]) #Start date
         q8 <- '" and "'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '" and title regexp "'
+        q10 <- '" and title regexp '
         titleRegexp <- ""
         if(length(datafields$titles) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$titles)){
@@ -766,15 +780,29 @@ server <- function(input, output, session){
             }
           }
         }
-        q11 <- titleRegexp
-        q12 <- '" group by cast(a.timeStamp as date)'
+        q11 <- paste0('"',titleRegexp,'"')
+        q12 <- ' and a._id in (select annonce_id from annonce_dataField where dataValue regexp '
+        datafieldsRegexp <- ""
+        if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
+          for(i in 1:length(datafields$selectedDataFields)){
+            if(i == 1){
+              datafieldsRegexp <- datafields$selectedDataFields[i]
+            } else {
+              datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
+            }
+          }
+        }
+        q13 <- paste0("'", datafieldsRegexp, "'")
+        q14 <- ')'
+        if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
+        q15 <- ' group by cast(a.timeStamp as date)'
         
         
         progressionData <- data.frame()
         for (id in kompetenceIds){
           q2 <- id
           
-          progressionData <- rbind(progressionData, dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11, q12)))
+          progressionData <- rbind(progressionData, dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11, q12,q13,q14,q15)))
           
           
         }
@@ -994,7 +1022,6 @@ server <- function(input, output, session){
         }
         q13 <- paste0("'", datafieldsRegexp, "'")
         q14 <- ')'
-        print(datafieldsRegexp)
         if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
          
         
@@ -1011,10 +1038,7 @@ server <- function(input, output, session){
         }
         
         query <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11,q12,q13,q14,q15)
-        
-        print(paste0(q7, q8, q9,q10,q11,q12,q13,q14,q15))
         annonceData <- dbGetQuery(con,query)
-        print(annonceData)
         
         dbDisconnect(con)
         
