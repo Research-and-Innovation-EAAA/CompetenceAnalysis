@@ -61,7 +61,7 @@ ui <- fluidPage(
                                   width = "100%"
                       )
                )
-             ),
+             )),
              textInput(inputId = "searchField", label = "Filter")
            ),
            tabPanel(title="Annoncer",
