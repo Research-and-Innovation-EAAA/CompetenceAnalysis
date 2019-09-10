@@ -33,7 +33,7 @@ ui <- fluidPage(
              fluidRow(
                column(4,
                       selectInput(inputId = "availableCategories",
-                                  label = "Tilgængelige:",
+                                  label = "Tilgængelige",
                                   size = 20,
                                   selectize = FALSE,
                                   multiple = TRUE,
@@ -49,7 +49,7 @@ ui <- fluidPage(
                ),
                column(4, 
                       selectInput(inputId = "selectedCategories",
-                                  label = "Valgte:",
+                                  label = "Valgte",
                                   size = 20,
                                   selectize = FALSE,
                                   multiple = TRUE,
@@ -72,73 +72,78 @@ ui <- fluidPage(
                ),
                column(6,
                       dateRangeInput('dateRange',
-                                     label = 'Periode:',
+                                     label = 'Periode',
                                      start = Sys.Date()-30, end = Sys.Date()
                       )
                ),
-               column(12, textInput(inputId = "titleSearchField", label = "Søg efter jobtitel")
+               column(9, textInput(inputId = "titleSearchField", label = "Jobtitel")
                ),
-               column(3,align = "center", style = "margin-top: 125px;",
-                      actionButton(inputId = "addTitle", label = "Tilføj", width = 150, style = "margin-top: 10px"),
-                      actionButton("removeTitle", "Fjern", width = 150, style = "margin-top: 10px"),
-                      actionButton("removeAllTitles", "Fjern alle", width = 150, style = "margin-top: 10px")
+               column(3, align = "center", actionButton(inputId = "addTitle", label = "Tilføj", style = "margin-top: 25px", width = 100)
                ),
                column(9, 
-                       selectInput(inputId = "selectedTitleSearchTerms",
-                                   label = "Valgte jobtitler:",
-                                   size = 20,
-                                   selectize = FALSE,
-                                   multiple = TRUE,
-                                   choices = list(),
-                                   width = "100%"
-                       )
-             ))
+                      selectInput(inputId = "selectedTitleSearchTerms",
+                                  label = "Valgte jobtitler",
+                                  size = 20,
+                                  selectize = FALSE,
+                                  multiple = TRUE,
+                                  choices = list(),
+                                  width = "100%"
+                      )
+               ),
+               column(3,align = "center", style = "margin-top: 125px;",
+                      actionButton("removeTitle", "Fjern", width = 100, style = "margin-top: 10px"),
+                      actionButton("removeAllTitles", "Fjern alle", width = 100, style = "margin-top: 10px")
+               )
+             )
            )),
-           tabPanel(title="Datafields",
+           tabPanel(title="Metadata",
                     wellPanel(
                       fluidRow(
                         column(12,
-                                      selectInput(inputId = "dataFieldChoice",
-                                                  label = "Vælg datafield at søge efter", 
-                                                  choices = {
-                                                  con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
-                                                  stopifnot(is.object(con))
-                                                  dataFieldNames <- dbGetQuery(con,'select name from dataField')
-                                                  dbDisconnect(con) 
-                                                  choices = dataFieldNames},
-                                                  multiple = FALSE, 
-                                                  width = "500px"
-                                      ),
-                               column(4,
-                                      selectInput(inputId = "availableDataFields",
-                                                  label = "Tilgængelige:",
-                                                  size = 20,
-                                                  selectize = FALSE,
-                                                  multiple = TRUE,
-                                                  choices = list(),
-                                                  width = "100%"
-                                      )
-                               ),
-                               column(4, align = "center", style = "margin-top: 75px;",
-                                      actionButton("addDataField", "Tilføj >", width = 150),
-                                      actionButton("removeDataField", "< Fjern", width = 150),
-                                      actionButton("removeAllDataFields", "<< Fjern alle", width = 150)    
-                               ),
-                               column(4, 
-                                      selectInput(inputId = "selectedDataFields",
-                                                  label = "Valgte:",
-                                                  size = 20,
-                                                  selectize = FALSE,
-                                                  multiple = TRUE,
-                                                  choices = list(),
-                                                  width = "100%"
-                                      )
-                               )        
-                      )
-                        
+                               selectInput(inputId = "dataFieldChoice",
+                                           label = "Datafelt", 
+                                           choices = {
+                                             con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+                                             stopifnot(is.object(con))
+                                             dataFieldNames <- as.matrix(dbGetQuery(con,'select name from datafield'))
+                                             dbDisconnect(con) 
+                                             choices = dataFieldNames},
+                                           multiple = FALSE, 
+                                           width = "500px"
+                               )
+                        ),
+                        column(12,
+                               textInput(inputId = "dataFieldSearchField", label = "Filter")
+                        ),
+                        column(4,
+                               selectInput(inputId = "availableDataFields",
+                                           label = "Tilgængelige",
+                                           size = 20,
+                                           selectize = FALSE,
+                                           multiple = TRUE,
+                                           choices = list(),
+                                           width = "100%"
+                               )
+                        ),
+                        column(4, align = "center", style = "margin-top: 75px;",
+                               actionButton("addDataField", "Tilføj >", width = 150),
+                               actionButton("removeDataField", "< Fjern", width = 150),
+                               actionButton("removeAllDataFields", "<< Fjern alle", width = 150)    
+                        ),
+                        column(4, 
+                               selectInput(inputId = "selectedDataFields",
+                                           label = "Valgte",
+                                           size = 20,
+                                           selectize = FALSE,
+                                           multiple = TRUE,
+                                           choices = list(),
+                                           width = "100%"
+                               )
+                        )     
                       )
                     )
-            )
+           )
+           
            )
     ),
     column(6,
@@ -229,6 +234,10 @@ server <- function(input, output, session){
   })
   
   observeEvent(input$dataFieldChoice,{
+    updateDataFields()
+  })
+  
+  observeEvent(input$dataFieldSearchField, ignoreInit = TRUE, {
     updateDataFields()
   }) 
   
@@ -446,7 +455,7 @@ server <- function(input, output, session){
       id <- unlist(strsplit(input$annonceList, " "))[1]
       
       
-      annonceDataFields <- dbGetQuery(con,paste0('select dataValue, name from annonce_dataField join dataField where annonce_id = ',id,' and dataField._id = dataField_id'))
+      annonceDataFields <- dbGetQuery(con,paste0('select dataValue, name from annonce_datafield join datafield where annonce_id = ',id,' and datafield._id = datafield_id'))
       newdf <- data.frame()
       
       
@@ -482,15 +491,22 @@ server <- function(input, output, session){
     con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
     stopifnot(is.object(con))
     
-    datafields <- dbGetQuery(con, paste0("select distinct dataValue from annonce_dataField where (select _id from dataField where name = '", input$dataFieldChoice, "') = dataField_id"))
+    if(input$dataFieldSearchField == ""){
+      query <- paste0(" from annonce_datafield where (select _id from datafield where name = '", input$dataFieldChoice, "') = datafield_id and dataValue is not null")
+    } else {
+      query <- paste0(" from annonce_datafield where (select _id from datafield where name = '", input$dataFieldChoice, "') = datafield_id and dataValue is not null and dataValue like '%", input$dataFieldSearchField, "%'")
+    }
     
+    count <- paste0("select count(distinct dataValue)",query)
     
-    updateSelectInput(session,
-                      inputId = "availableDataFields",
-                      choices = datafields
-    )
-    
-    datafields$availableDataFields <- datafields
+    if(dbGetQuery(con,count) > 1000){
+      showNotification("Søgekriteriet er for bredt, specifikér søgningen!", type= "error")
+    } else {
+      updateSelectInput(session,
+                        inputId = "availableDataFields",
+                        choices = as.matrix(dbGetQuery(con,paste0("select distinct dataValue",query)))
+      )
+    }
     
     dbDisconnect(con)
     
@@ -670,7 +686,7 @@ server <- function(input, output, session){
           }
         }
         q11 <- paste0('"',titleRegexp,'"')
-        q12 <- ' and a._id in (select annonce_id from annonce_dataField where dataValue regexp '
+        q12 <- ' and a._id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
         if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$selectedDataFields)){
@@ -781,7 +797,7 @@ server <- function(input, output, session){
           }
         }
         q11 <- paste0('"',titleRegexp,'"')
-        q12 <- ' and a._id in (select annonce_id from annonce_dataField where dataValue regexp '
+        q12 <- ' and a._id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
         if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$selectedDataFields)){
@@ -966,7 +982,7 @@ server <- function(input, output, session){
   
   updateAnnonceList <- function(){
     if(length(kompetencer$sk) != 0){
-      withProgress(message = "Updaterer annonceliste", expr = {
+      withProgress(message = "Opdaterer annonceliste", expr = {
         setProgress(0)
         matchIndexes <- list()
         categoryMatrix <- as.matrix(fullCategoryData)
@@ -1009,7 +1025,7 @@ server <- function(input, output, session){
           }
         }
         q11 <- paste0("'",titleRegexp,"'")
-        q12 <- ' and a._id in (select annonce_id from annonce_dataField where dataValue regexp '
+        q12 <- ' and a._id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
         if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$selectedDataFields)){
