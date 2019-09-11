@@ -600,7 +600,9 @@ server <- function(input, output, session){
         stopifnot(is.object(con))
         
         setProgress(2/6)
-        finalList <- as.vector(as.matrix(dbGetQuery(con, paste0(q1, q2))))
+        qq <- paste0(q1, q2)
+        print(qq)
+        finalList <- as.vector(as.matrix(dbGetQuery(con, qq)))
         
         setProgress(3/6)
         done <- FALSE
@@ -672,7 +674,7 @@ server <- function(input, output, session){
         #}
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
-        q3 <- ' and ak.a_region_name = "'
+        q3 <- ')) and ak.a_region_name = "'
         q4 <- input$regChoice            #region name
         q5 <- '" '
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
@@ -681,7 +683,7 @@ server <- function(input, output, session){
         q7 <- format(input$dateRange[1]) #Start date
         q8 <- '") and DATE("'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '" and title regexp '
+        q10 <- '") and a_title regexp '
         titleRegexp <- ""
         if(length(datafields$titles) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$titles)){
@@ -691,8 +693,10 @@ server <- function(input, output, session){
               titleRegexp <-paste0(titleRegexp,"|",datafields$titles[i])
             }
           }
+        } else {
+          titleRegexp <- ".*"
         }
-        q11 <- paste0('"',titleRegexp,'"')
+        q11 <- paste0("\"",titleRegexp,"\"")
         q12 <- ' and a._id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
         if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
@@ -723,6 +727,7 @@ server <- function(input, output, session){
         
         qq <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12,q13,q14,q15)
         
+        #print(qq)
        
         kompetenceData <- dbGetQuery(con, qq)
         
@@ -793,7 +798,7 @@ server <- function(input, output, session){
         }
         
         q0 <- paste0("select ", periodQuery)
-        q1 <- " period, count(DISTINCT annonce_id) amount from annonce_kompetence ak where ak.kompetence_id in "
+        q1 <- " period, count(DISTINCT annonce_id) amount from annonce_kompetence ak where ak.kompetence_id in"
         #if (input$matchChoice == "Machine-Learned"){
         #  q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
         #}
@@ -808,7 +813,7 @@ server <- function(input, output, session){
         q7 <- format(input$dateRange[1]) #Start date
         q8 <- '") and DATE("'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '" and title regexp '
+        q10 <- '") and a_title regexp '
         titleRegexp <- ""
         if(length(datafields$titles) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$titles)){
@@ -818,8 +823,10 @@ server <- function(input, output, session){
               titleRegexp <-paste0(titleRegexp,"|",datafields$titles[i])
             }
           }
+        } else {
+          titleRegexp <- ".*"
         }
-        q11 <- paste0('"',titleRegexp,'"')
+        q11 <- paste0("\"",titleRegexp,"\"")
         q12 <- ' and a._id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
         if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
@@ -834,21 +841,24 @@ server <- function(input, output, session){
         q13 <- paste0("'", datafieldsRegexp, "'")
         q14 <- ')'
         if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
-        q15 <- ' group by cast(a.timeStamp as date)'
+        q15 <- ' group by cast(ak.a_timeStamp as date)'
         
         
         progressionData <- data.frame()
-        for (id in kompetenceIds){
-          q2 <- id
-          
-          progressionData <- rbind(progressionData, dbGetQuery(con, paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11, q12,q13,q14,q15)))
-          
-          
+        q2 <- "("
+        for (i in 1:length(kompetenceIds)){
+          if (i < length(kompetenceIds)){
+            q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
+          }
+          else{
+            q2 <- paste0(q2, kompetenceIds[i],') ')
+          }
         }
-
-        qq <- paste0(q0, q1, q2, q3, q4, q5, q6, q7, q8, q9, q10)
-        #print(qq)
+        
+        qq <- paste0(q0, q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11, q12,q13,q14,q15)
+        print(qq)
         formattedData <- rbind(progressionData, dbGetQuery(con, qq))
+
         dbDisconnect(con)
         
         setProgress(2/7)
@@ -931,7 +941,7 @@ server <- function(input, output, session){
         q1 <- 'select ak.annonce_id, ak.a_title from annonce_kompetence ak where '
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
-        q3 <- ' and ak.a_region_name = "'
+        q3 <- ') and ak.a_region_name = "'
         q4 <- input$regChoice            #region name
         q5 <- '" '
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
@@ -940,7 +950,7 @@ server <- function(input, output, session){
         q7 <- format(input$dateRange[1]) #Start date
         q8 <- '") and DATE("'
         q9 <- format(input$dateRange[2]) #End date
-        q10 <- '" and title regexp '
+        q10 <- '") and a_title regexp '
         titleRegexp <- "" 
         if(length(datafields$titles) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$titles)){
@@ -950,8 +960,10 @@ server <- function(input, output, session){
               titleRegexp <-paste0(titleRegexp,"|",datafields$titles[i])
             }
           }
+        } else {
+          titleRegexp <- ".*"
         }
-        q11 <- paste0("'",titleRegexp,"'")
+        q11 <- paste0("\"",titleRegexp,"\"")
         q12 <- ' and a._id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
         if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
@@ -968,7 +980,7 @@ server <- function(input, output, session){
         if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
          
         
-        q15 <- ' group by a._id'
+        q15 <- ' group by ak.annonce_id'
         
         q2 <- ' ak.kompetence_id IN ('
         for (i in 1:length(kompetenceIds)){
@@ -981,6 +993,7 @@ server <- function(input, output, session){
         }
         
         query <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11,q12,q13,q14,q15)
+        print(query)
         annonceData <- dbGetQuery(con,query)
         
         dbDisconnect(con)
