@@ -61,8 +61,8 @@ ui <- fluidPage(
                                   width = "100%"
                       )
                )
-             )),
-             textInput(inputId = "searchField", label = "Filter")
+             ),
+             textInput(inputId = "searchField", label = "Filter"))
            ),
            tabPanel(title="Annoncer",
            wellPanel(
@@ -601,7 +601,7 @@ server <- function(input, output, session){
         
         setProgress(2/6)
         qq <- paste0(q1, q2)
-        print(qq)
+        #print(qq)
         finalList <- as.vector(as.matrix(dbGetQuery(con, qq)))
         
         setProgress(3/6)
@@ -726,9 +726,7 @@ server <- function(input, output, session){
         setProgress(2/5)
         
         qq <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12,q13,q14,q15)
-        
         #print(qq)
-       
         kompetenceData <- dbGetQuery(con, qq)
         
         
@@ -856,7 +854,7 @@ server <- function(input, output, session){
         }
         
         qq <- paste0(q0, q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11, q12,q13,q14,q15)
-        print(qq)
+        #print(qq)
         formattedData <- rbind(progressionData, dbGetQuery(con, qq))
 
         dbDisconnect(con)
@@ -993,7 +991,7 @@ server <- function(input, output, session){
         }
         
         query <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11,q12,q13,q14,q15)
-        print(query)
+        #print(query)
         annonceData <- dbGetQuery(con,query)
         
         dbDisconnect(con)
