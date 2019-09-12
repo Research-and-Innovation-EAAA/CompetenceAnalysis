@@ -460,18 +460,13 @@ server <- function(input, output, session){
       
       
 
-      annonceDataFields <- dbGetQuery(con,paste0('select dataValue, name from annonce_datafield join datafield where annonce_id = ',id,' and datafield._id = dataField_id'))
-
-      newdf <- data.frame()
-      
-      
-      
-      
+      annonceDataFields <- dbGetQuery(con,paste0('select cvr, "CVR" as name from annonce where _id = ', id, ' union select dataValue, name from annonce_datafield join datafield where annonce_id = ',id,' and datafield._id = dataField_id'))
+      print(paste0('select cvr, "CVR" as name from annonce where annonce_id = ', id, ' select dataValue, name from annonce_datafield join datafield where annonce_id = ',id,' and datafield._id = dataField_id'))
       annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body from annonce where _id = ', id))
       
 
       
-      if(nrow(annonceDataFields)== 0){
+      if(nrow(annonceDataFields)== 0 || is.na(annonceDataFields)){
         annonceDataFields <- data.frame("Ingen tilgængelige cvr oplysninger")
         names(annonceDataFields) <- c("") #remove column headers
         output$annonceDataFields <- renderTable(annonceDataFields)
@@ -825,7 +820,7 @@ server <- function(input, output, session){
           titleRegexp <- ".*"
         }
         q11 <- paste0("\"",titleRegexp,"\"")
-        q12 <- ' and a._id in (select annonce_id from annonce_datafield where dataValue regexp '
+        q12 <- ' and ak.annonce_id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
         if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$selectedDataFields)){
@@ -962,7 +957,7 @@ server <- function(input, output, session){
           titleRegexp <- ".*"
         }
         q11 <- paste0("\"",titleRegexp,"\"")
-        q12 <- ' and a._id in (select annonce_id from annonce_datafield where dataValue regexp '
+        q12 <- ' and ak.annonce_id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
         if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$selectedDataFields)){
@@ -991,7 +986,6 @@ server <- function(input, output, session){
         }
         
         query <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11,q12,q13,q14,q15)
-        #print(query)
         annonceData <- dbGetQuery(con,query)
         
         dbDisconnect(con)
