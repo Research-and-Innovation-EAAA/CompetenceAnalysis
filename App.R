@@ -461,7 +461,6 @@ server <- function(input, output, session){
       
 
       annonceDataFields <- dbGetQuery(con,paste0('select cvr, "CVR" as name from annonce where _id = ', id, ' union select dataValue, name from annonce_datafield join datafield where annonce_id = ',id,' and datafield._id = dataField_id'))
-      print(paste0('select cvr, "CVR" as name from annonce where annonce_id = ', id, ' select dataValue, name from annonce_datafield join datafield where annonce_id = ',id,' and datafield._id = dataField_id'))
       annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body from annonce where _id = ', id))
       
 
@@ -596,7 +595,6 @@ server <- function(input, output, session){
         
         setProgress(2/6)
         qq <- paste0(q1, q2)
-        #print(qq)
         finalList <- as.vector(as.matrix(dbGetQuery(con, qq)))
         
         setProgress(3/6)
@@ -669,7 +667,7 @@ server <- function(input, output, session){
         #}
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
-        q3 <- ')) and ak.a_region_name = "'
+        q3 <- ' and ak.a_region_name = "'
         q4 <- input$regChoice            #region name
         q5 <- '" '
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
@@ -934,7 +932,7 @@ server <- function(input, output, session){
         q1 <- 'select ak.annonce_id, ak.a_title from annonce_kompetence ak where '
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
-        q3 <- ') and ak.a_region_name = "'
+        q3 <- ' and ak.a_region_name = "'
         q4 <- input$regChoice            #region name
         q5 <- '" '
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
