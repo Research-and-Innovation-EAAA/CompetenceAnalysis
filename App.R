@@ -112,7 +112,8 @@ ui <- fluidPage(
                                              stopifnot(is.object(con))
                                              dataFieldNames <- as.matrix(dbGetQuery(con,'select name from datafield'))
                                              dbDisconnect(con) 
-                                             choices = dataFieldNames},
+                                             choices = dataFieldNames
+                                             },
                                            multiple = FALSE, 
                                            width = "500px"
                                )
@@ -169,6 +170,7 @@ ui <- fluidPage(
              tabPanel("Kompetencesammenligning",
                       wellPanel(
                         textOutput(outputId = "kompetenceErrorField"),
+                        checkboxInput("matchAllCompetences", "Vis kun søgte kompetencer", TRUE),
                         plotOutput("kompetenceDiagram", height = 620)
                       )
              ),
@@ -209,6 +211,7 @@ ui <- fluidPage(
 server <- function(input, output, session){
   kompetencer <- reactiveValues(ak = NULL, sk = list(), fk = list())
   datafields <- reactiveValues(titles = list(),selectedDataFields = list(), availableDataFields = list())
+  
   current <- reactiveValues(tab = 1)
   tabUpdates <- reactiveValues(kompetence = FALSE, progression = FALSE, annonce = FALSE)
   lastShinyTree <- reactiveValues(tree = list())
@@ -245,6 +248,10 @@ server <- function(input, output, session){
   observeEvent(input$dataFieldSearchField, ignoreInit = TRUE, {
     updateDataFields()
   }) 
+  
+  observeEvent(input$matchAllCompetences, ignoreInit = TRUE,{
+      updateCurrentTab()
+  })
   
   observeEvent(input$outputPanel, ignoreInit = TRUE, {
     if (input$outputPanel == "Kompetencesammenligning"){
@@ -653,6 +660,7 @@ server <- function(input, output, session){
         for (kompetence in kompetencer$sk){
           matchIndexes <- c(matchIndexes, which(categoryMatrix[,1] == kompetence))
         }
+        
         kompetenceIds <- list()
         for (index in matchIndexes){
           kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
@@ -661,7 +669,7 @@ server <- function(input, output, session){
         stopifnot(is.object(con))
         
         setProgress(1/5)
-        q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
+        q1 <- 'select distinct ak.k_prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak where '
         #if (input$matchChoice == "Machine-Learned"){
         #  q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
         #}
@@ -686,10 +694,9 @@ server <- function(input, output, session){
               titleRegexp <-paste0(titleRegexp,"|",datafields$titles[i])
             }
           }
-        } else {
-          titleRegexp <- ".*"
-        }
+        } 
         q11 <- paste0("\"",titleRegexp,"\"")
+        if(titleRegexp == ""){q10 <- '")'; q11 <- ""}
         q12 <- ' and a._id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
         if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
@@ -706,13 +713,31 @@ server <- function(input, output, session){
         if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
         q15 <- ' group by ak.kompetence_id order by amount desc limit 30'
         
-        q2 <- ' ak.kompetence_id IN (select max(komp._id) from kompetence komp where komp._id in ('
-        for (i in 1:length(kompetenceIds)){
-          if (i < length(kompetenceIds)){
-            q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
+        
+        
+        
+        if(!input$matchAllCompetences){
+          q2 <- ' ak.kompetence_id IN (select ank.kompetence_id from annonce_kompetence ank join (select distinct aki.annonce_id from (select max(komp._id) as komp_id from kompetence komp where komp._id in ('
+          
+          for (i in 1:length(kompetenceIds)){
+            if (i < length(kompetenceIds)){
+              q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
+            }
+            else{
+              q2 <- paste0(q2, kompetenceIds[i],') group by komp.prefferredLabel) as ski ')
+            }
           }
-          else{
-            q2 <- paste0(q2, kompetenceIds[i],') group by komp.prefferredLabel) ')
+          q2 <- paste0(q2, ' join annonce_kompetence aki on ski.komp_id = aki.kompetence_id) as ad_ids on ad_ids.annonce_id = ank.annonce_id)')
+        } else {
+          
+          q2 <- ' ak.kompetence_id IN (select max(komp._id) from kompetence komp where komp._id in ('
+          for (i in 1:length(kompetenceIds)){
+            if (i < length(kompetenceIds)){
+              q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
+            }
+            else{
+              q2 <- paste0(q2, kompetenceIds[i],') group by komp.prefferredLabel) ')
+            }
           }
         }
 
@@ -721,7 +746,7 @@ server <- function(input, output, session){
         qq <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12,q13,q14,q15)
         #print(qq)
         kompetenceData <- dbGetQuery(con, qq)
-        
+        #print(kompetenceData)
         
         dbDisconnect(con)
         
@@ -738,7 +763,7 @@ server <- function(input, output, session){
             ylim <- c(0, 1.2*max(kompetenceData$amount))
             xx <- barplot(kompetenceData$amount, xlim = ylim, 
                     main=paste0("Kompetencer i jobopslag\n", input$regChoice, " fra ", input$dateRange[1], " til ", input$dateRange[2], "."), 
-                    names.arg = kompetenceData$prefferredLabel,
+                    names.arg = kompetenceData$k_prefferredLabel,
                     las = 2,
                     horiz = TRUE
             )
