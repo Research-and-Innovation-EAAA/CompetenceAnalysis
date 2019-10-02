@@ -697,7 +697,7 @@ server <- function(input, output, session){
         } 
         q11 <- paste0("\"",titleRegexp,"\"")
         if(titleRegexp == ""){q10 <- '")'; q11 <- ""}
-        q12 <- ' and a._id in (select annonce_id from annonce_datafield where dataValue regexp '
+        q12 <- ' and ak.annonce_id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
         if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$selectedDataFields)){
@@ -717,17 +717,19 @@ server <- function(input, output, session){
         
         
         if(!input$matchAllCompetences){
-          q2 <- ' ak.kompetence_id IN (select ank.kompetence_id from annonce_kompetence ank join (select distinct aki.annonce_id from (select max(komp._id) as komp_id from kompetence komp where komp._id in ('
+          q1 <- 'select distinct ak.k_prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak join (select distinct aki.annonce_id from kompetence k join annonce_kompetence as aki on k._id = aki.kompetence_id and aki.a_timeStamp between DATE("'
+          q1 <- paste0(q1,format(input$dateRange[1]),'") and DATE("',format(input$dateRange[2]),'") where k._id in')
+          q2 <- '('
           
           for (i in 1:length(kompetenceIds)){
             if (i < length(kompetenceIds)){
               q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
             }
             else{
-              q2 <- paste0(q2, kompetenceIds[i],') group by komp.prefferredLabel) as ski ')
+              q2 <- paste0(q2, kompetenceIds[i],')) as ad_ids')
             }
           }
-          q2 <- paste0(q2, ' join annonce_kompetence aki on ski.komp_id = aki.kompetence_id) as ad_ids on ad_ids.annonce_id = ank.annonce_id)')
+          q2 <- paste0(q2, ' on ak.annonce_id=ad_ids.annonce_id')
         } else {
           
           q2 <- ' ak.kompetence_id IN (select max(komp._id) from kompetence komp where komp._id in ('
