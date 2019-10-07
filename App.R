@@ -171,7 +171,8 @@ ui <- fluidPage(
                       wellPanel(
                         textOutput(outputId = "kompetenceErrorField"),
                         checkboxInput("matchAllCompetences", "Vis kun søgte kompetencer", TRUE),
-                        plotOutput("kompetenceDiagram", height = 620)
+                        plotOutput("kompetenceDiagram", height = 620),
+                        downloadButton("downloadKompetenceData", "Download data")
                       )
              ),
              tabPanel("Progression", 
@@ -199,7 +200,8 @@ ui <- fluidPage(
                           tableOutput(outputId = "annonceDataFields"),
                           tags$h5(style="font-weight:bold", "Annoncetekst:"),
                           textOutput(outputId = "annonceText"),
-                          tags$style(type="text/css", "#annonceDataFields td:first-child {font-weight:bold;}") #make row names of table bold.
+                          tags$style(type="text/css", "#annonceDataFields td:first-child {font-weight:bold;}"), #make row names of table bold.
+                          downloadButton("downloadAnnonceliste", "Download data")
                         )
                       )
              )
@@ -211,6 +213,7 @@ ui <- fluidPage(
 server <- function(input, output, session){
   kompetencer <- reactiveValues(ak = NULL, sk = list(), fk = list())
   datafields <- reactiveValues(titles = list(),selectedDataFields = list(), availableDataFields = list())
+  csvData <- reactiveValues(annonceListe = list(), kompetenceListe = list())
   
   current <- reactiveValues(tab = 1)
   tabUpdates <- reactiveValues(kompetence = FALSE, progression = FALSE, annonce = FALSE)
@@ -230,6 +233,19 @@ server <- function(input, output, session){
     updateTree(session,"tree", treeString)
     setProgress(1)
   })
+  
+  output$downloadAnnonceliste <- downloadHandler(
+    filename = 'annonce_liste.csv',
+    content = function(file){
+      write.csv(csvData$annonceListe, file, row.names = FALSE)
+    }
+  )
+  output$downloadKompetenceData <- downloadHandler(
+    filename = 'kompetence_data.csv',
+    content = function(file){
+      write.csv(csvData$kompetenceListe, file, row.names = FALSE)
+    }
+  )
   
   dbDisconnect(con)
   
@@ -746,8 +762,10 @@ server <- function(input, output, session){
         setProgress(2/5)
         
         qq <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12,q13,q14,q15)
+        csvDataQuery <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12,q13,q14, ' group by ak.kompetence_id order by amount desc')
         #print(qq)
         kompetenceData <- dbGetQuery(con, qq)
+        csvData$kompetenceListe <- dbGetQuery(con,csvDataQuery)
         #print(kompetenceData)
         
         dbDisconnect(con)
@@ -1012,7 +1030,7 @@ server <- function(input, output, session){
         
         query <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11,q12,q13,q14,q15)
         annonceData <- dbGetQuery(con,query)
-        
+        csvData$annonceListe <- annonceData
         dbDisconnect(con)
         
         setProgress(2/3)
