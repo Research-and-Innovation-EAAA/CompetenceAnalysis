@@ -1,0 +1,151 @@
+{
+  "cultural_date_format": "%d-%m-%Y",
+  "languages": ["en", "da"],
+  "translation": [
+      {
+        "en": "COMPETENCE ANALYSIS", 
+        "da": "KOMPETENCEANALYSE"
+      },
+      
+      
+      {
+       "en": "Competences",
+       "da": "Kompetencer"},
+       
+      {
+        "en": "Available   Categories",
+        "da": "Tilg\u00E6gelige"
+      },
+      {
+        "en": "Available datafields:",
+        "da": "Tilg\u00E6gelige:"
+      },
+      
+      {
+        "en": "Add All \u02C3\u02C3",
+        "da": "Tilf\u00F8j alle \u02C3\u02C3"
+      },
+      
+      {
+        "en": "Add \u02C3",
+        "da": "Tilf\u00F8j \u02C3"
+      },
+         
+     
+      {
+        "en": "Selected Categories",
+        "da": "Valgte"
+      },
+           
+      
+      {
+        "en": "Advertisements",
+        "da": "Annoncer"
+      },
+      
+      {
+        "en": "Region",
+        "da": "Region"
+      },
+      
+      {
+        "en": "Period",
+        "da": "Periode"
+      },
+      
+      {
+        "en": "Job Title",
+        "da": "Jobtitel"
+      },
+      
+      {
+        "en": "Add Title \u02C3",
+        "da": "Tilf\u00F8j \u02C3"
+      },
+      
+      {
+        "en": "Selected Job Title",
+        "da": "Valgte jobtitler"
+      },
+      
+  
+      
+      {
+        "en": "Meta data",
+        "da": "Metadata"
+      },
+      
+      {
+        "en": "Data field",
+        "da": "Datafelt"
+      },
+      
+      {
+        "en": "Filter",
+        "da": "Filter"
+      },
+      
+      {
+        "en": "\u02C2 Remove",
+        "da": "\u02C2 Fjern"
+      },
+      
+      {
+        "en": "\u02C2\u02C2 Remove All",
+        "da": "\u02C2\u02C2 Fjern alle"
+      },
+      
+      {
+        "en": "Selected",
+        "da": "Valgte"
+      },
+      
+      {
+        "en": "Search results",
+        "da": "S\u00F8geresultater"
+      },
+      
+      {
+        "en": "Search criterea",
+        "da": "S\u00F8gekriterier"
+      },
+      
+      {
+        "en": "Competence Comparison",
+        "da": "Kompetencesammenligning"
+      },
+      
+      {
+        "en": "Show only searched competencies",
+        "da": "Vis kun s\u00F8gte kompetencer"
+      },
+      
+      
+      {
+        "en": "Progression",
+        "da": "Progression"
+      },
+      
+      {
+        "en": "Progression Period",
+        "da": "Periodeopdelinge"
+      },
+      
+      {
+        "en": "Ad List",
+        "da": "Annonceliste"
+      },
+       
+      {
+        "en": "CVR information:",
+        "da": "CVR-Oplysninger:"
+      },
+       
+      {
+        "en": "Ad Text",
+        "da": "Annoncetekst:"
+      }
+      
+      
+    ]
+}

@@ -1,16 +1,20 @@
 library(DBI)
 library(RMariaDB)
 library(shiny)
+library(shiny.i18n)
 library(dplyr)
 library(ggplot2)
 library(shinyTree)
+library(devtools)
 
-source('credentials.R')
+source(file = 'credentials.R')
+i18n <- Translator$new(translation_json_path = "C:/Users/vgv/Desktop/Tasks/CompetenceAnalysis1/CompetenceAnalysis-master/translation.json")
+i18n$set_translation_language(credentials.language)
 
 ui <- fluidPage(
   fluidRow(style = "margin-top: 5px;",
     column(6, style = "margin-top: 0px; font-size: 16px;", 
-           titlePanel(title = "KOMPETENCEANALYSE", windowTitle = "Annonce Analyse"),
+           titlePanel(title = i18n$t("COMPETENCE ANALYSIS"), windowTitle = "Annonce Analyse"),
            div(style = "font-size: 20px;", textOutput(outputId = "annonceCountField")),
            tags$span("Kilde: "),
            tags$a(href="https://www.jobindex.dk","JobIndex"),
@@ -24,16 +28,16 @@ ui <- fluidPage(
   fluidRow(style = "margin-top: 15px;",
     
     column(6,
-           tags$h3("Søgekriterier"),
+           tags$h3(i18n$t("Search criterea")),
            tabsetPanel(
-             tabPanel(title = "Kompetencer",
+             tabPanel(title = i18n$t("Competences"),
            wellPanel(
              shinyTree("tree", checkbox = TRUE),
              fluidRow(style = "margin-top: 15px;"),
              fluidRow(
                column(4,
                       selectInput(inputId = "availableCategories",
-                                  label = "Tilgængelige",
+                                  label = i18n$t("Available   Categories"),
                                   size = 20,
                                   selectize = FALSE,
                                   multiple = TRUE,
@@ -43,17 +47,17 @@ ui <- fluidPage(
                ),
                column(4, align = "center", style = "margin-top: 25px;",
                       fluidRow(style = "margin-top: 15px;",
-                               actionButton("addAll", "Tilføj alle >>", width = 100),
-                               actionButton("add", "Tilføj >", width = 100)
+                               actionButton("addAll",label = i18n$t("Add All \u02C3\u02C3"), width = 150),
+                               actionButton("add", label = i18n$t("Add \u02C3"), width = 150)
                       ),
                       fluidRow(style = "margin-top: 15px;",
-                               actionButton("remove", "< Fjern", width = 100),
-                               actionButton("removeAll", "<< Fjern alle", width = 100)    
+                               actionButton("remove",label = i18n$t("\u02C2 Remove"), width = 150),
+                               actionButton("removeAll", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150)    
                       )
                ),
                column(4, 
                       selectInput(inputId = "selectedCategories",
-                                  label = "Valgte",
+                                  label = i18n$t("Selected Categories"),
                                   size = 20,
                                   selectize = FALSE,
                                   multiple = TRUE,
@@ -64,12 +68,12 @@ ui <- fluidPage(
              ),
              textInput(inputId = "searchField", label = "Filter"))
            ),
-           tabPanel(title="Annoncer",
+           tabPanel(title=i18n$t("Advertisements"),
            wellPanel(
              fluidRow(
                column(6,
                       selectInput(inputId = "regChoice",
-                                  label = "Region", 
+                                  label = i18n$t("Region"), 
                                   choices = list("Alle regioner", "storkoebenhavn", "nordsjaelland", "region-sjaelland", "fyn", "region-nordjylland", "region-midtjylland", "sydjylland", "bornholm", "skaane", "groenland", "faeroeerne", "udlandet"),
                                   multiple = FALSE, 
                                   width = "400px"
@@ -77,17 +81,17 @@ ui <- fluidPage(
                ),
                column(6,
                       dateRangeInput('dateRange',
-                                     label = 'Periode',
+                                     label = i18n$t("Period"),
                                      start = Sys.Date()-30, end = Sys.Date()
                       )
                ),
-               column(9, textInput(inputId = "titleSearchField", label = "Jobtitel")
+               column(9, textInput(inputId = "titleSearchField", label = i18n$t("Job Title"))
                ),
-               column(3, align = "center", actionButton(inputId = "addTitle", label = "Tilføj", style = "margin-top: 25px", width = 100)
+               column(3, align = "center", actionButton(inputId = "addTitle", label = i18n$t("Add Title \u02C3"), style = "margin-top: 25px", width = 100)
                ),
                column(9, 
                       selectInput(inputId = "selectedTitleSearchTerms",
-                                  label = "Valgte jobtitler",
+                                  label = i18n$t("Selected Job Title"),
                                   size = 20,
                                   selectize = FALSE,
                                   multiple = TRUE,
@@ -96,17 +100,17 @@ ui <- fluidPage(
                       )
                ),
                column(3,align = "center", style = "margin-top: 125px;",
-                      actionButton("removeTitle", "Fjern", width = 100, style = "margin-top: 10px"),
-                      actionButton("removeAllTitles", "Fjern alle", width = 100, style = "margin-top: 10px")
+                      actionButton("removeTitle", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
+                      actionButton("removeAllTitles", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
                )
              )
            )),
-           tabPanel(title="Metadata",
+           tabPanel(title=i18n$t("Meta data"),
                     wellPanel(
                       fluidRow(
                         column(12,
                                selectInput(inputId = "dataFieldChoice",
-                                           label = "Datafelt", 
+                                           label = i18n$t("Data field"), 
                                            choices = {
                                              con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
                                              stopifnot(is.object(con))
@@ -119,11 +123,11 @@ ui <- fluidPage(
                                )
                         ),
                         column(12,
-                               textInput(inputId = "dataFieldSearchField", label = "Filter")
+                               textInput(inputId = "dataFieldSearchField", label = i18n$t("Filter"))
                         ),
                         column(4,
                                selectInput(inputId = "availableDataFields",
-                                           label = "Tilgængelige",
+                                           label = i18n$t("Available datafields:"),
                                            size = 20,
                                            selectize = FALSE,
                                            multiple = TRUE,
@@ -132,13 +136,13 @@ ui <- fluidPage(
                                )
                         ),
                         column(4, align = "center", style = "margin-top: 75px;",
-                               actionButton("addDataField", "Tilføj >", width = 150),
-                               actionButton("removeDataField", "< Fjern", width = 150),
-                               actionButton("removeAllDataFields", "<< Fjern alle", width = 150)    
+                               actionButton("addDataField", i18n$t("Add \u02C3"), width = 150),
+                               actionButton("removeDataField", i18n$t("\u02C2 Remove"), width = 150),
+                               actionButton("removeAllDataFields", i18n$t("\u02C2\u02C2 Remove All"), width = 150)    
                         ),
                         column(4, 
                                selectInput(inputId = "selectedDataFields",
-                                           label = "Valgte",
+                                           label = i18n$t("Selected"),
                                            size = 20,
                                            selectize = FALSE,
                                            multiple = TRUE,
@@ -155,19 +159,12 @@ ui <- fluidPage(
     column(6,
            fluidRow(
              column(4,
-                    tags$h3("Søgeresultater")
+                    tags$h3(i18n$t("Search results"))
                     )
-             #column(8, 
-             #       selectInput(inputId = "matchChoice",
-             #                   label = "Vælg matchsystem",
-             #                   choices = list("Ord Match", "Machine-Learned"),
-             #                   multiple = FALSE,
-             #                   width = "200px"
-             #                   )
-             #       )
+            
            ),
            tabsetPanel(id = "outputPanel",
-             tabPanel("Kompetencesammenligning",
+             tabPanel(title=i18n$t("Competence Comparison"),
                       wellPanel(
                         textOutput(outputId = "kompetenceErrorField"),
                         checkboxInput("matchAllCompetences", "Vis kun søgte kompetencer", TRUE),
@@ -178,19 +175,19 @@ ui <- fluidPage(
              tabPanel("Progression", 
                       wellPanel(
                         selectInput(inputId = "progressionDateFormat", 
-                                    label = "Periodeopdeling", 
+                                    label = i18n$t("Progression Period"), 
                                     choices = list("Uge", "Måned", "År")
                         ),
                         textOutput(outputId = "progressionErrorField"),
                         plotOutput("progressionDiagram", height = 540)
                       )
              ),
-             tabPanel("Annonceliste",
+             tabPanel(title=i18n$t("Ad List"),
                       wellPanel(
                         fluidRow(
                           textOutput(outputId = "annonceErrorField"),
                           selectInput(inputId = "annonceList",
-                                      label = "",
+                                      label = i18n$t("Ad List"),
                                       selectize = FALSE,
                                       size = 20,
                                       choices = list(),
