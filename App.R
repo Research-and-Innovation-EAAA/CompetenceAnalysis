@@ -8,7 +8,7 @@ library(shinyTree)
 library(devtools)
 
 source(file = 'credentials.R')
-i18n <- Translator$new(translation_json_path = "C:/Users/vgv/Desktop/Tasks/CompetenceAnalysis1/CompetenceAnalysis-master/translation.json")
+i18n <- Translator$new(translation_json_path = "translation.json")
 i18n$set_translation_language(credentials.language)
 
 ui <- fluidPage(
@@ -225,6 +225,8 @@ server <- function(input, output, session){
     annonceCount <- dbGetQuery(con, 'select count(*) from annonce')[1,1]
     output$annonceCountField <- renderText(paste0(annonceCount, " jobannoncer"))
     setProgress(2/3)
+    
+    
     treeString <- dbGetQuery(con, 'select shinyTreeJSON from global where _id = 1')[1,1]
     output$tree <- renderEmptyTree()
     updateTree(session,"tree", treeString)
