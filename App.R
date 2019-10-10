@@ -85,7 +85,7 @@ ui <- fluidPage(
                                      start = Sys.Date()-30, end = Sys.Date()
                       )
                ),
-               column(9, textInput(inputId = "titleSearchField", label = i18n$t("Job Title"))
+               column(9, textInput(inputId = "titleSearchField", label = i18n$t("Job Title"),  placeholder = i18n$t("Enter one or more comma separated job titles"))
                ),
                column(3, align = "center", actionButton(inputId = "addTitle", label = i18n$t("Add Title \u02C3"), style = "margin-top: 25px", width = 100)
                ),
@@ -437,8 +437,12 @@ server <- function(input, output, session){
   })
   observeEvent(input$addTitle,{
     if(input$titleSearchField != ""){
-      datafields$titles <- c(datafields$titles,input$titleSearchField)
-    
+      
+      split <- strsplit(input$titleSearchField, split = ",", fixed = TRUE)[[1]]
+      
+      for(element in split){
+        datafields$titles <- c(datafields$titles, element)
+      }
     
       updateSelectInput(session,inputId = "selectedTitleSearchTerms",choices = datafields$titles)
     
