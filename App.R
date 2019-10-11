@@ -195,6 +195,8 @@ ui <- fluidPage(
                           ),
                           tags$h5(style="font-weight:bold", "CVR-Oplysninger:"),
                           tableOutput(outputId = "annonceDataFields"),
+                          tags$h5(style="font-weight:bold", "Kompetencer:"),
+                          tableOutput(outputId = "annonceKompetencer"),
                           tags$h5(style="font-weight:bold", "Annoncetekst:"),
                           textOutput(outputId = "annonceText"),
                           tags$style(type="text/css", "#annonceDataFields td:first-child {font-weight:bold;}"), #make row names of table bold.
@@ -488,9 +490,9 @@ server <- function(input, output, session){
 
       annonceDataFields <- dbGetQuery(con,paste0('select cvr, "CVR" as name from annonce where _id = ', id, ' union select dataValue, name from annonce_datafield join datafield where annonce_id = ',id,' and datafield._id = dataField_id'))
       annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body from annonce where _id = ', id))
-      
+      annonceKompetencer <- dbGetQuery(con,paste0('select distinct k_prefferredLabel from annonce_kompetence where annonce_id = ', id))
 
-      
+      # Cvr info
       if(nrow(annonceDataFields)== 0 || is.na(annonceDataFields)){
         annonceDataFields <- data.frame("Ingen tilgængelige cvr oplysninger")
         names(annonceDataFields) <- c("") #remove column headers
@@ -501,7 +503,11 @@ server <- function(input, output, session){
       names(annonceDataFields) <- c("") #remove column headers
       output$annonceDataFields <- renderTable(annonceDataFields,include.rownames=TRUE)
       }
+      # Kompetence info
+      names(annonceKompetencer) <- c("") #remove column headers
+      output$annonceKompetencer <- renderTable(annonceKompetencer)
       
+      #here
       
       setProgress(1/2)
       dbDisconnect(con)
@@ -1031,9 +1037,14 @@ server <- function(input, output, session){
           }
         }
         
-        query <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11,q12,q13,q14,q15)
+        query <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15)
         annonceData <- dbGetQuery(con,query)
-        csvData$annonceListe <- annonceData
+        
+        # .csv data query
+        csvSubQuery <- paste0('select ak.annonce_id from annonce_kompetence ak where ', q2, q3, q4, q5, q6, q7, q8, q9,q10,q11,q12,q13,q14)
+        csvQuery <- paste0('select distinct ako.annonce_id, ako.a_title, ako.k_prefferredLabel from annonce_kompetence ako where ako.annonce_id in (', csvSubQuery,')') 
+        csvData$annonceListe <- dbGetQuery(con,csvQuery)
+        
         dbDisconnect(con)
         
         setProgress(2/3)
