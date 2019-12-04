@@ -167,7 +167,10 @@ ui <- fluidPage(
              tabPanel(title=i18n$t("Competence Comparison"),
                       wellPanel(
                         textOutput(outputId = "kompetenceErrorField"),
-                        checkboxInput("matchAllCompetences", "Vis kun søgte kompetencer", TRUE),
+                        fluidRow(
+                                 column(6,checkboxInput("matchMachineLearningKompetence", "Vis machine learning matches", FALSE)),
+                                 column(6,checkboxInput("matchAllCompetences", "Vis kun søgte kompetencer", TRUE))
+                        ),
                         plotOutput("kompetenceDiagram", height = 620),
                         downloadButton("downloadKompetenceData", "Download data")
                       )
@@ -184,6 +187,7 @@ ui <- fluidPage(
              ),
              tabPanel(title=i18n$t("Ad List"),
                       wellPanel(
+                        checkboxInput("matchMachineLearningAnnonce", "Vis machine learning matches", FALSE),
                         fluidRow(
                           textOutput(outputId = "annonceErrorField"),
                           selectInput(inputId = "annonceList",
@@ -268,6 +272,12 @@ server <- function(input, output, session){
   
   observeEvent(input$matchAllCompetences, ignoreInit = TRUE,{
       updateCurrentTab()
+  })
+  observeEvent(input$matchMachineLearningKompetence, ignoreInit = TRUE,{
+    updateCurrentTab()
+  })
+  observeEvent(input$matchMachineLearningAnnonce, ignoreInit = TRUE,{
+    updateCurrentTab()
   })
   
   observeEvent(input$outputPanel, ignoreInit = TRUE, {
@@ -507,8 +517,6 @@ server <- function(input, output, session){
       names(annonceKompetencer) <- c("") #remove column headers
       output$annonceKompetencer <- renderTable(annonceKompetencer)
       
-      #here
-      
       setProgress(1/2)
       dbDisconnect(con)
       
@@ -695,9 +703,9 @@ server <- function(input, output, session){
         
         setProgress(1/5)
         q1 <- 'select distinct ak.k_prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak where '
-        #if (input$matchChoice == "Machine-Learned"){
-        #  q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
-        #}
+        if (input$matchMachineLearningKompetence == TRUE){
+          q1 <- 'select distinct k.prefferredLabel as k_prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence_machine ak join kompetence k on k._id = ak.kompetence_id where '
+        }
         q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
         q3 <- ' and ak.a_region_name = "'
@@ -705,10 +713,6 @@ server <- function(input, output, session){
         q5 <- '" '
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
         ##############
-        q6 <- ' and ak.a_timeStamp between DATE("'
-        q7 <- format(input$dateRange[1]) #Start date
-        q8 <- '") and DATE("'
-        q9 <- format(input$dateRange[2]) #End date
         q10 <- '") and a_title regexp '
         titleRegexp <- ""
         if(length(datafields$titles) > 0){ #check if user has entered any search terms
@@ -742,8 +746,8 @@ server <- function(input, output, session){
         
         
         if(!input$matchAllCompetences){
-          q1 <- 'select distinct ak.k_prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak join (select distinct aki.annonce_id from kompetence k join annonce_kompetence as aki on k._id = aki.kompetence_id and aki.a_timeStamp between DATE("'
-          q1 <- paste0(q1,format(input$dateRange[1]),'") and DATE("',format(input$dateRange[2]),'") where k._id in')
+          q1 <- 'select distinct ak.k_prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak join (select distinct aki.annonce_id from kompetence k join annonce_kompetence as aki on k._id = aki.kompetence_id and aki.a_timeStamp '
+          q1 <- paste0(q1,'where k._id in')
           q2 <- '('
           
           for (i in 1:length(kompetenceIds)){
@@ -770,12 +774,9 @@ server <- function(input, output, session){
 
         setProgress(2/5)
         
-        qq <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12,q13,q14,q15)
-        csvDataQuery <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12,q13,q14, ' group by ak.kompetence_id order by amount desc')
-        #print(qq)
+        qq <- paste0(q1,q2,q3,q4,q5,q13,q14,q15)
+        print(qq)
         kompetenceData <- dbGetQuery(con, qq)
-        csvData$kompetenceListe <- dbGetQuery(con,csvDataQuery)
-        #print(kompetenceData)
         
         dbDisconnect(con)
         
@@ -791,7 +792,7 @@ server <- function(input, output, session){
             par(mar = c(5,18,4,2) + 0.1)
             ylim <- c(0, 1.2*max(kompetenceData$amount))
             xx <- barplot(kompetenceData$amount, xlim = ylim, 
-                    main=paste0("Kompetencer i jobopslag\n", input$regChoice, " fra ", input$dateRange[1], " til ", input$dateRange[2], "."), 
+                    main='Kompetence Diagram', 
                     names.arg = kompetenceData$k_prefferredLabel,
                     las = 2,
                     horiz = TRUE
@@ -844,9 +845,6 @@ server <- function(input, output, session){
         
         q0 <- paste0("select ", periodQuery)
         q1 <- " period, count(DISTINCT annonce_id) amount from annonce_kompetence ak where ak.kompetence_id in"
-        #if (input$matchChoice == "Machine-Learned"){
-        #  q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
-        #}
         #q2 is kompetence id, set in loop due to it being the one iterated on.
         ####REGION####
         q3 <- ' and ak.a_region_name = "'
@@ -991,11 +989,7 @@ server <- function(input, output, session){
         q5 <- '" '
         if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
         ##############
-        q6 <- ' and ak.a_timeStamp between DATE("'
-        q7 <- format(input$dateRange[1]) #Start date
-        q8 <- '") and DATE("'
-        q9 <- format(input$dateRange[2]) #End date
-        q10 <- '") and a_title regexp '
+        q10 <- ' and a_title regexp '
         titleRegexp <- "" 
         if(length(datafields$titles) > 0){ #check if user has entered any search terms
           for(i in 1:length(datafields$titles)){
@@ -1037,13 +1031,13 @@ server <- function(input, output, session){
           }
         }
         
-        query <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15)
-        annonceData <- dbGetQuery(con,query)
+        query <- paste0(q1, q2, q3, q4, q5, q10, q11, q12, q13, q14, q15)
         
-        # .csv data query
-        csvSubQuery <- paste0('select ak.annonce_id from annonce_kompetence ak where ', q2, q3, q4, q5, q6, q7, q8, q9,q10,q11,q12,q13,q14)
-        csvQuery <- paste0('select distinct ako.annonce_id, ako.a_title, ako.k_prefferredLabel from annonce_kompetence ako where ako.annonce_id in (', csvSubQuery,')') 
-        csvData$annonceListe <- dbGetQuery(con,csvQuery)
+        if(input$matchMachineLearningAnnonce == TRUE) {
+          query <- paste0("select ak.annonce_id, a.title from annonce_kompetence_machine ak join annonce a on a._id = ak.annonce_id where", q2)
+        } 
+        print(query)
+        annonceData <- dbGetQuery(con,query)
         
         dbDisconnect(con)
         
