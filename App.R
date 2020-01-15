@@ -813,7 +813,15 @@ server <- function(input, output, session){
     }
   }
  
+  buildSearchParameterJSON <- function() {
+    periodType <- setClass("period", slots = c(fromTime="Date", toTime="Date"))
+    periodObject <- periodType(fromTime = input$dateRange[1], toTime = input$dateRange[2])
+    return(toJSON(periodObject, force=TRUE, auto_unbox=TRUE))
+  }
+  
   updateProgressionDiagram <- function(){
+    print(buildSearchParameterJSON())
+    
     if(length(kompetencer$sk) != 0){
       withProgress(message = "Opdaterer diagram", expr = {
         setProgress(0)
