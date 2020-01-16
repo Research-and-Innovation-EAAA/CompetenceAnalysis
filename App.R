@@ -102,7 +102,26 @@ ui <- fluidPage(
                column(3,align = "center", style = "margin-top: 125px;",
                       actionButton("removeTitle", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
                       actionButton("removeAllTitles", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
+               ),
+               column(9, textInput(inputId = "TextSearchField", label = i18n$t("Job Text"),  placeholder = i18n$t("Enter one or more comma separated job Texts"))
+               ),
+               column(3, align = "center", actionButton(inputId = "addText", label = i18n$t("Add Text \u02C3"), style = "margin-top: 25px", width = 100)
+               ),
+               column(9, 
+                      selectInput(inputId = "selectedTextSearchTerms",
+                                  label = i18n$t("Selected Job Text"),
+                                  size = 20,
+                                  selectize = FALSE,
+                                  multiple = TRUE,
+                                  choices = list(),
+                                  width = "100%"
+                      )
+               ),
+               column(3,align = "center", style = "margin-top: 125px;",
+                      actionButton("removeText", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
+                      actionButton("removeAllTexts", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
                )
+               
              )
            )),
            tabPanel(title=i18n$t("Meta data"),
@@ -439,18 +458,23 @@ server <- function(input, output, session){
   })
   observeEvent(input$addTitle,{
     if(input$titleSearchField != ""){
-      
       split <- strsplit(input$titleSearchField, split = ",", fixed = TRUE)[[1]]
-      
       for(element in split){
         datafields$titles <- c(datafields$titles, element)
       }
-    
       updateSelectInput(session,inputId = "selectedTitleSearchTerms",choices = datafields$titles)
-    
       updateCurrentTab()
     }
-    
+  })
+  observeEvent(input$addText,{
+    if(input$TextSearchField != ""){
+      split <- strsplit(input$TextSearchField, split = ",", fixed = TRUE)[[1]]
+      for(element in split){
+        datafields$Texts <- c(datafields$Texts, element)
+      }
+      updateSelectInput(session,inputId = "selectedTextSearchTerms",choices = datafields$Texts)
+      updateCurrentTab()
+    }
   })
   
   observeEvent(input$removeTitle,{
@@ -465,6 +489,21 @@ server <- function(input, output, session){
       datafields$titles <- datafields$titles[!datafields$titles %in% datafields$titles]
       updateSelectInput(session,inputId = "selectedTitleSearchTerms", choices = datafields$titles)
       updateCurrentTab()
+    
+  })
+
+  observeEvent(input$removeText,{
+    if (!is.null(input$selectedTextSearchTerms)){
+      datafields$Texts <- datafields$Texts[!datafields$Texts %in% input$selectedTextSearchTerms]
+      updateSelectInput(session,inputId = "selectedTextSearchTerms", choices = datafields$Texts)
+      updateCurrentTab()
+    }
+  })
+  observeEvent(input$removeAllTexts,{
+    
+    datafields$Texts <- datafields$Texts[!datafields$Texts %in% datafields$Texts]
+    updateSelectInput(session,inputId = "selectedTextSearchTerms", choices = datafields$Texts)
+    updateCurrentTab()
     
   })
   
@@ -738,9 +777,6 @@ server <- function(input, output, session){
         if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
         q15 <- ' group by ak.kompetence_id order by amount desc limit 30'
         
-        
-        
-        
         if(!input$matchAllCompetences){
           q1 <- 'select distinct ak.k_prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak join (select distinct aki.annonce_id from kompetence k join annonce_kompetence as aki on k._id = aki.kompetence_id and aki.a_timeStamp between DATE("'
           q1 <- paste0(q1,format(input$dateRange[1]),'") and DATE("',format(input$dateRange[2]),'") where k._id in')
@@ -814,9 +850,85 @@ server <- function(input, output, session){
   }
  
   buildSearchParameterJSON <- function() {
-    periodType <- setClass("period", slots = c(fromTime="Date", toTime="Date"))
-    periodObject <- periodType(fromTime = input$dateRange[1], toTime = input$dateRange[2])
-    return(toJSON(periodObject, force=TRUE, auto_unbox=TRUE))
+    # Build parameter:
+    # {
+    #   "period": {
+    #     "fromTime": "2019-09-30",
+    #     "toTime": "2019-11-30"
+    #   },
+    #   "region": {
+    #     "nameList": [
+    #       "region-midtjylland"
+    #       ],
+    #     "idList": [
+    #       11
+    #       ]
+    #   },
+    #   "textcontent": {
+    #     "titleRegexp": "(?i)Projektleder",
+    #     "bodyRegexp": "(?i)Projektleder"
+    #   },
+    #   "kompetence": {
+    #     "idList": [
+    #       158861
+    #       ],
+    #     "nameList": [
+    #       "Virksomhed"
+    #       ]
+    #   },
+    #   "metadata": {
+    #     "kommune": {
+    #       "valueList": [
+    #         "Aarhus",
+    #         "Aalborg"
+    #         ]
+    #     },
+    #     "branchetekst": {
+    #       "valueList": [
+    #         "Computerprogrammering",
+    #         "Vandforsyning"
+    #         ]
+    #     }
+    #   }
+    # }
+    
+    # Build mandatory period criteria
+    periodParam <- '"period":'
+    periodType <- setClass("Period", slots = c(fromTime="Date", toTime="Date"))
+    periodObject = periodType(fromTime = input$dateRange[1], toTime = input$dateRange[2])
+    periodParam <- paste0(periodParam, toJSON(unclass(periodObject), force=TRUE, auto_unbox=TRUE))
+    
+    # Build optional region criteria
+    regionParam <- ""
+    
+    # Build optional textcontent criteria
+    textcontentParam <- ""
+#     if(length(datafields$titles)>0 || length(datafields$bodies)>0) {
+#       textcontentParam <- ', "textcontent:"'
+# ####### HEERRRR !!!      
+#       textcontentType <- setClass("Textcontent", slots = c(titleRegexp="character", bodyRegexp="character"))
+# 
+#       titleRegexp <- NULL
+#       titleRegexp <- "(?i)[[:<:]]("
+#       for(i in 1:length(datafields$titles)) {
+#         if(i == 1){
+#           titleRegexp <- datafields$titles[i]
+#         } else {
+#           titleRegexp <-paste0(titleRegexp,"|",datafields$titles[i])
+#         }
+#       }
+#       titleRegexp <- paste0(titleRegexp,")[[:>:]]")
+#     }
+    
+    # Build optional kompetence criteria
+    kompetenceParam <- ""
+    
+    # Build optional metadata criteria
+    metadataParam <- ""
+    
+    
+    JSONvalue = paste0("{", periodParam, regionParam, textcontentParam, kompetenceParam, metadataParam, "}") 
+    return(JSONvalue)
   }
   
   updateProgressionDiagram <- function(){
