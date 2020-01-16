@@ -470,9 +470,9 @@ server <- function(input, output, session){
     if(input$TextSearchField != ""){
       split <- strsplit(input$TextSearchField, split = ",", fixed = TRUE)[[1]]
       for(element in split){
-        datafields$Texts <- c(datafields$Texts, element)
+        datafields$texts <- c(datafields$texts, element)
       }
-      updateSelectInput(session,inputId = "selectedTextSearchTerms",choices = datafields$Texts)
+      updateSelectInput(session,inputId = "selectedTextSearchTerms",choices = datafields$texts)
       updateCurrentTab()
     }
   })
@@ -494,15 +494,15 @@ server <- function(input, output, session){
 
   observeEvent(input$removeText,{
     if (!is.null(input$selectedTextSearchTerms)){
-      datafields$Texts <- datafields$Texts[!datafields$Texts %in% input$selectedTextSearchTerms]
-      updateSelectInput(session,inputId = "selectedTextSearchTerms", choices = datafields$Texts)
+      datafields$texts <- datafields$texts[!datafields$texts %in% input$selectedTextSearchTerms]
+      updateSelectInput(session,inputId = "selectedTextSearchTerms", choices = datafields$texts)
       updateCurrentTab()
     }
   })
   observeEvent(input$removeAllTexts,{
     
-    datafields$Texts <- datafields$Texts[!datafields$Texts %in% datafields$Texts]
-    updateSelectInput(session,inputId = "selectedTextSearchTerms", choices = datafields$Texts)
+    datafields$texts <- datafields$texts[!datafields$texts %in% datafields$texts]
+    updateSelectInput(session,inputId = "selectedTextSearchTerms", choices = datafields$texts)
     updateCurrentTab()
     
   })
@@ -904,30 +904,17 @@ server <- function(input, output, session){
     # Build optional textcontent criteria
     textcontentParam <- ""
     titleSearch <- (length(datafields$titles)>0)
-    textSearch <- (length(datafields$Texts)>0)
+    textSearch <- (length(datafields$texts)>0)
     if(titleSearch || textSearch) {
       textcontentParam <- ', "textcontent:"'
       
       if(titleSearch) {
-        for(i in 1:length(datafields$titles)) {
-          if(i == 1){
-            titleRegexpVal <- datafields$titles[i]
-          } else {
-            titleRegexpVal <-paste0(titleRegexpVal,"|",datafields$titles[i])
-          }
-        }
+        titleRegexpVal <-paste(datafields$titles, collapse='|')
         titleRegexpVal <- paste0("(?i)[[:<:]](", titleRegexpVal,")[[:>:]]")
       }
       
       if(textSearch) {
-        textRegexpVal <- "(?i)[[:<:]]("
-        for(i in 1:length(datafields$Texts)) {
-          if(i == 1){
-            textRegexpVal <- datafields$Texts[i]
-          } else {
-            textRegexpVal <-paste0(textRegexpVal,"|",datafields$Texts[i])
-          }
-        }
+        textRegexpVal <-paste(datafields$texts, collapse='|')
         textRegexpVal <- paste0("(?i)[[:<:]](", textRegexpVal,")[[:>:]]")
       }
       
