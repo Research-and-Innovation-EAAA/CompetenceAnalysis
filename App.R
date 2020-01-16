@@ -900,13 +900,15 @@ server <- function(input, output, session){
     
     # Build optional region criteria
     regionParam <- ""
-    
+    if(regionParam != "Alle regioner") {
+      regionParam <- paste0(', "region": {"nameList":["', input$regChoice,'"]}')
+    }
+
     # Build optional textcontent criteria
     textcontentParam <- ""
     titleSearch <- (length(datafields$titles)>0)
     textSearch <- (length(datafields$texts)>0)
     if(titleSearch || textSearch) {
-      textcontentParam <- ', "textcontent:"'
       
       if(titleSearch) {
         titleRegexpVal <-paste(datafields$titles, collapse='|')
@@ -929,7 +931,7 @@ server <- function(input, output, session){
         searchcontentObject <- searchcontentType(textRegexp = textRegexpVal)
       }
       
-      textcontentParam <- paste0(textcontentParam, toJSON(unclass(searchcontentObject), force=TRUE, auto_unbox=TRUE))
+      textcontentParam <- paste0(', "textcontent":', textcontentParam, toJSON(unclass(searchcontentObject), force=TRUE, auto_unbox=TRUE))
     }
     
     # Build optional kompetence criteria
