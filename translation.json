@@ -21,6 +21,10 @@
         "da": "Indtast én eller flere kommaseparerede jobtitler"
       },
       {
+        "en": "Enter one or more comma separated job texts",
+        "da": "Indtast én eller flere kommaseparerede jobtekster"
+      },
+      {
         "en": "Available datafields:",
         "da": "Tilg\u00E6gelige:"
       },
@@ -61,15 +65,27 @@
         "en": "Job Title",
         "da": "Jobtitel"
       },
+      {
+        "en": "Job Text",
+        "da": "Jobtekst"
+      },
       
       {
         "en": "Add Title \u02C3",
+        "da": "Tilf\u00F8j \u02C3"
+      },
+      {
+        "en": "Add Text \u02C3",
         "da": "Tilf\u00F8j \u02C3"
       },
       
       {
         "en": "Selected Job Title",
         "da": "Valgte jobtitler"
+      },
+      {
+        "en": "Selected Job Texts",
+        "da": "Valgte jobtekster"
       },
       
   
