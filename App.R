@@ -103,7 +103,7 @@ ui <- fluidPage(
                       actionButton("removeTitle", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
                       actionButton("removeAllTitles", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
                ),
-               column(9, textInput(inputId = "TextSearchField", label = i18n$t("Job Text"),  placeholder = i18n$t("Enter one or more comma separated job Texts"))
+               column(9, textInput(inputId = "TextSearchField", label = i18n$t("Job Text"),  placeholder = i18n$t("Enter one or more comma separated job texts"))
                ),
                column(3, align = "center", actionButton(inputId = "addText", label = i18n$t("Add Text \u02C3"), style = "margin-top: 25px", width = 100)
                ),
@@ -903,22 +903,47 @@ server <- function(input, output, session){
     
     # Build optional textcontent criteria
     textcontentParam <- ""
-#     if(length(datafields$titles)>0 || length(datafields$bodies)>0) {
-#       textcontentParam <- ', "textcontent:"'
-# ####### HEERRRR !!!      
-#       textcontentType <- setClass("Textcontent", slots = c(titleRegexp="character", bodyRegexp="character"))
-# 
-#       titleRegexp <- NULL
-#       titleRegexp <- "(?i)[[:<:]]("
-#       for(i in 1:length(datafields$titles)) {
-#         if(i == 1){
-#           titleRegexp <- datafields$titles[i]
-#         } else {
-#           titleRegexp <-paste0(titleRegexp,"|",datafields$titles[i])
-#         }
-#       }
-#       titleRegexp <- paste0(titleRegexp,")[[:>:]]")
-#     }
+    titleSearch <- (length(datafields$titles)>0)
+    textSearch <- (length(datafields$Texts)>0)
+    if(titleSearch || textSearch) {
+      textcontentParam <- ', "textcontent:"'
+      
+      if(titleSearch) {
+        for(i in 1:length(datafields$titles)) {
+          if(i == 1){
+            titleRegexpVal <- datafields$titles[i]
+          } else {
+            titleRegexpVal <-paste0(titleRegexpVal,"|",datafields$titles[i])
+          }
+        }
+        titleRegexpVal <- paste0("(?i)[[:<:]](", titleRegexpVal,")[[:>:]]")
+      }
+      
+      if(textSearch) {
+        textRegexpVal <- "(?i)[[:<:]]("
+        for(i in 1:length(datafields$Texts)) {
+          if(i == 1){
+            textRegexpVal <- datafields$Texts[i]
+          } else {
+            textRegexpVal <-paste0(textRegexpVal,"|",datafields$Texts[i])
+          }
+        }
+        textRegexpVal <- paste0("(?i)[[:<:]](", textRegexpVal,")[[:>:]]")
+      }
+      
+      if(titleSearch && textSearch) {
+        searchcontentType <- setClass("Searchcontent", slots = c(titleRegexp="character", textRegexp="character"))
+        searchcontentObject <- searchcontentType(textRegexp = textRegexpVal, titleRegexp = titleRegexpVal )
+      } else if(titleSearch) {
+        searchcontentType <- setClass("Searchcontent", slots = c(titleRegexp="character"))
+        searchcontentObject <- searchcontentType(titleRegexp = titleRegexpVal )
+      } else {
+        searchcontentType <- setClass("Searchcontent", slots = c(textRegexp="character"))
+        searchcontentObject <- searchcontentType(textRegexp = textRegexpVal)
+      }
+      
+      textcontentParam <- paste0(textcontentParam, toJSON(unclass(searchcontentObject), force=TRUE, auto_unbox=TRUE))
+    }
     
     # Build optional kompetence criteria
     kompetenceParam <- ""
