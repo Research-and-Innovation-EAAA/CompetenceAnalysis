@@ -6,6 +6,7 @@ library(dplyr)
 library(ggplot2)
 library(shinyTree)
 library(devtools)
+library(jsonlite)
 
 source(file = 'credentials.R')
 i18n <- Translator$new(translation_json_path = "translation.json")
@@ -230,7 +231,7 @@ ui <- fluidPage(
 
 server <- function(input, output, session){
   kompetencer <- reactiveValues(ak = NULL, sk = list(), fk = list())
-  datafields <- reactiveValues(titles = list(),selectedDataFields = list(), availableDataFields = list())
+  datafields <- reactiveValues(titles = list(), selectedDataFields = list(), availableDataFields = list())
   csvData <- reactiveValues(annonceListe = list(), kompetenceListe = list())
   
   current <- reactiveValues(tab = 1)
@@ -253,7 +254,9 @@ server <- function(input, output, session){
     updateTree(session,"tree", treeString)
     setProgress(1)
   })
-  
+
+  #fullDataFieldDefinitions <- dbGetQuery(con, 'select distinct dataField_name, dataValue from annonce_datafield adf order by dataField_name')
+    
   output$downloadAnnonceliste <- downloadHandler(
     filename = 'annonce_liste.csv',
     content = function(file){
@@ -524,8 +527,6 @@ server <- function(input, output, session){
       stopifnot(is.object(con))
       
       id <- unlist(strsplit(input$annonceList, " "))[1]
-      
-      
 
       annonceDataFields <- dbGetQuery(con,paste0('select cvr, "CVR" as name from annonce where _id = ', id, ' union select dataValue, name from annonce_datafield join datafield where annonce_id = ',id,' and datafield._id = dataField_id'))
       annonceText <- dbGetQuery(con, paste0('select convert(searchable_body using utf8) as searchable_body from annonce where _id = ', id))
@@ -559,30 +560,40 @@ server <- function(input, output, session){
   
   ############################################################     FUNCTIONS     ############################################################
   
-    updateDataFields <- function(){
-    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+  updateDataFields <- function() {
+    con <-
+      dbConnect(
+        RMariaDB::MariaDB(),
+        host = credentials.host,
+        user = credentials.user,
+        password = credentials.password,
+        port = credentials.port,
+        db = credentials.db,
+        bigint = c("numeric")
+      )
     stopifnot(is.object(con))
     
-    if(input$dataFieldSearchField == ""){
-      query <- paste0(" from annonce_datafield where (select _id from datafield where name = '", input$dataFieldChoice, "') = datafield_id and dataValue is not null")
-    } else {
-      query <- paste0(" from annonce_datafield where (select _id from datafield where name = '", input$dataFieldChoice, "') = datafield_id and dataValue is not null and dataValue like '%", input$dataFieldSearchField, "%'")
-    }
-    
-    count <- paste0("select count(distinct dataValue)",query)
-    
-    if(dbGetQuery(con,count) > 1000){
-      showNotification("Søgekriteriet er for bredt, specifikér søgningen!", type= "error")
-    } else {
-      updateSelectInput(session,
-                        inputId = "availableDataFields",
-                        choices = as.matrix(dbGetQuery(con,paste0("select distinct dataValue",query)))
+    query <-
+      paste0(
+        " from annonce_datafield where (select _id from datafield where name = '",
+        input$dataFieldChoice,
+        "') = datafield_id and dataValue is not null"
       )
+    if (input$dataFieldSearchField != "") {
+      query <-
+        paste0(query,
+               " and dataValue like '%",
+               input$dataFieldSearchField,
+               "%'")
     }
+    updateSelectInput(session,
+                      inputId = "availableDataFields",
+                      choices = as.matrix(dbGetQuery(
+                        con, paste0("select distinct dataValue", query)
+                      )))
     
     dbDisconnect(con)
-    
-    }
+  }
   
   updateCurrentTab <- function(){
     if (current$tab == 1){
@@ -892,19 +903,19 @@ server <- function(input, output, session){
     #   }
     # }
     
-    # Build mandatory period criteria
+    # Build period criteria
     periodParam <- '"period":'
     periodType <- setClass("Period", slots = c(fromTime="Date", toTime="Date"))
     periodObject = periodType(fromTime = input$dateRange[1], toTime = input$dateRange[2])
     periodParam <- paste0(periodParam, toJSON(unclass(periodObject), force=TRUE, auto_unbox=TRUE))
     
-    # Build optional region criteria
+    # Build region criteria
     regionParam <- ""
-    if(regionParam != "Alle regioner") {
+    if(input$regChoice != "Alle regioner") {
       regionParam <- paste0(', "region": {"nameList":["', input$regChoice,'"]}')
     }
 
-    # Build optional textcontent criteria
+    # Build textcontent criteria
     textcontentParam <- ""
     titleSearch <- (length(datafields$titles)>0)
     textSearch <- (length(datafields$texts)>0)
@@ -934,12 +945,33 @@ server <- function(input, output, session){
       textcontentParam <- paste0(', "textcontent":', textcontentParam, toJSON(unclass(searchcontentObject), force=TRUE, auto_unbox=TRUE))
     }
     
-    # Build optional kompetence criteria
+    # Build kompetence criteria
     kompetenceParam <- ""
+    if (length(kompetencer$sk)>0) {
+      matchIndexes <- list()
+      categoryMatrix <- as.matrix(fullCategoryData)
+      for (kompetence in kompetencer$sk){
+        matchIndexes <- c(matchIndexes, which(categoryMatrix[,1] == kompetence))
+      }
+      kompetenceIds <- list()
+      for (index in matchIndexes) {
+        kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
+      }
+      kompetenceParam <- paste0(', "kompetence": {"idList": [', paste(kompetenceIds, collapse=','),']}')
+    }
     
     # Build optional metadata criteria
     metadataParam <- ""
-    
+    if(FALSE && length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
+      for(i in 1:length(datafields$selectedDataFields)){
+        if(i == 1){
+          datafieldsRegexp <- datafields$selectedDataFields[i]
+        } else {
+          datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
+        }
+      }
+      #metadataParam <- paste0(', "kompetence": {"idList": [', paste(datafields$selectedDataFields), collapse=','),']}')
+    }
     
     JSONvalue = paste0("{", periodParam, regionParam, textcontentParam, kompetenceParam, metadataParam, "}") 
     return(JSONvalue)
