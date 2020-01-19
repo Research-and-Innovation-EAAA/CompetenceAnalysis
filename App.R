@@ -253,6 +253,7 @@ server <- function(input, output, session){
     output$tree <- renderEmptyTree()
     updateTree(session,"tree", treeString)
     setProgress(1)
+    dbDisconnect(con)
   })
 
   output$downloadAnnonceliste <- downloadHandler(
@@ -267,8 +268,6 @@ server <- function(input, output, session){
       write.csv(csvData$kompetenceListe, file, row.names = FALSE)
     }
   )
-  
-  dbDisconnect(con)
   
   observeEvent(input$dateRange, ignoreInit = TRUE, {
     updateCurrentTab()
@@ -969,13 +968,15 @@ server <- function(input, output, session){
     }
     
     JSONvalue = paste0("{", periodParam, regionParam, textcontentParam, kompetenceParam, metadataParam, "}") 
+    print(JSONvalue)
     return(JSONvalue)
   }
 
   getSearchAdResultTableName <- function()  {
-    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
-    stopifnot(is.object(con))
     dbQuery <- paste0("CALL `prepareCacheTable`('",buildSearchParameterJSON(),"')")
+    #print(dbQuery)
+    con <- dbConnect(RMariaDB::MariaDB(), host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+    stopifnot(is.object(con))
     result <- dbGetQuery(con, dbQuery)
     dbDisconnect(con)
     
@@ -985,22 +986,6 @@ server <- function(input, output, session){
   updateProgressionDiagram <- function(){
     if(length(kompetencer$sk) != 0){
       withProgress(message = "Opdaterer diagram", expr = {
-        setProgress(0)
-        matchIndexes <- list()
-        categoryMatrix <- as.matrix(fullCategoryData)
-        for (kompetence in kompetencer$sk){
-          matchIndexes <- c(matchIndexes, which(categoryMatrix[,1] == kompetence))
-        }
-        kompetenceIds <- list()
-        for (index in matchIndexes){
-          kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
-        }
-        
-        cacheTableName <- getSearchAdResultTableName()
-        setProgress(1/7)
-        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
-        stopifnot(is.object(con))
-        
         
         if (input$progressionDateFormat == "Uge"){
           periodQuery <- "DATE_FORMAT(timeStamp,'%Y-%U')"
@@ -1012,8 +997,15 @@ server <- function(input, output, session){
           periodQuery <- "DATE_FORMAT(timeStamp,'%Y')"
         }
         else {
-          stop()
+          return()
         }
+        
+        setProgress(0)
+        cacheTableName <- getSearchAdResultTableName()
+
+        setProgress(1/7)
+        con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+        stopifnot(is.object(con))
         
         qq <-
           paste0(
@@ -1049,8 +1041,6 @@ server <- function(input, output, session){
             a <- result$coefficients[1]
             b <- result$coefficients[2]
             v <- round(100*(b*(n+1))/abs(a), digits=0)
-            
-                                        # print (paste0("a: ", a, ", b: ", b, ", vækst: ", v, "%"))
             
             setProgress(6/7)
 
