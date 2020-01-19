@@ -436,11 +436,8 @@ server <- function(input, output, session){
   })
   observeEvent(input$addDataField, {
     if (!is.null(input$availableDataFields)){
-        datafields$selectedDataFields <- c(datafields$selectedDataFields, input$availableDataFields)
-        updateSelectInput(session,
-                          inputId = "selectedDataFields", 
-                          choices = datafields$selectedDataFields
-        )
+        datafields$selectedDataFields[[input$dataFieldChoice]] <- c(datafields$selectedDataFields[[input$dataFieldChoice]], input$availableDataFields)
+        updateDataFields()
         updateCurrentTab()
       
     }
@@ -448,15 +445,15 @@ server <- function(input, output, session){
   
   observeEvent(input$removeDataField, {
     if (!is.null(input$selectedDataFields)){
-      datafields$selectedDataFields <- datafields$selectedDataFields[!datafields$selectedDataFields %in% input$selectedDataFields]
-      updateSelectInput(session,inputId = "selectedDataFields", choices = datafields$selectedDataFields)
+      datafields$selectedDataFields[[input$dataFieldChoice]] <- datafields$selectedDataFields[[input$dataFieldChoice]][!datafields$selectedDataFields[[input$dataFieldChoice]] %in% input$selectedDataFields]
+      updateDataFields()
       updateCurrentTab()
     }
   })
   
   observeEvent(input$removeAllDataFields, {
-    datafields$selectedDataFields <- datafields$selectedDataFields[!datafields$selectedDataFields %in% datafields$selectedDataFields]
-    updateSelectInput(session,inputId = "selectedDataFields", choices = datafields$selectedDataFields)
+    datafields$selectedDataFields[[input$dataFieldChoice]] <- list()
+    updateDataFields()
     updateCurrentTab()
   })
   observeEvent(input$addTitle,{
@@ -561,28 +558,38 @@ server <- function(input, output, session){
   ############################################################     FUNCTIONS     ############################################################
   
   updateDataFields <- function(){
+    
+    # Update UI to show current data fields selected values
+    if (is.null(datafields$selectedDataFields[[input$dataFieldChoice]])) {
+      datafields$selectedDataFields[[input$dataFieldChoice]] <- list()
+    }
+    updateSelectInput(session,
+                      inputId = "selectedDataFields",
+                      choices = datafields$selectedDataFields[[input$dataFieldChoice]])
+
+    # Update UI to show current data fields available values
     con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
     stopifnot(is.object(con))
-    
-    if(input$dataFieldSearchField == ""){
-      query <- paste0(" from annonce_datafield where (select _id from datafield where name = '", input$dataFieldChoice, "') = datafield_id and dataValue is not null")
-    } else {
-      query <- paste0(" from annonce_datafield where (select _id from datafield where name = '", input$dataFieldChoice, "') = datafield_id and dataValue is not null and dataValue like '%", input$dataFieldSearchField, "%'")
+    query <- paste0("select distinct dataValue from annonce_datafield where (select _id from datafield where name = '", input$dataFieldChoice, "') = datafield_id and dataValue is not null")
+    if(input$dataFieldSearchField != "") {
+      query <- paste0(query,"  and dataValue like '%", input$dataFieldSearchField, "%'")
     }
-    
-    count <- paste0("select count(distinct dataValue)",query)
-    
+    count <- paste0("select count(*) from (",query,") qtable")
     if(dbGetQuery(con,count) > 1000){
-      showNotification("Søgekriteriet er for bredt, specifikér søgningen!", type= "error")
-    } else {
       updateSelectInput(session,
                         inputId = "availableDataFields",
-                        choices = as.matrix(dbGetQuery(con,paste0("select distinct dataValue",query)))
+                        choices = list()
+      )
+      showNotification(i18n$t("Too many results, details search filter!"), type= "error")
+    } else {
+      datafields$availableDataFields <- as.matrix(dbGetQuery(con,query))
+      updateSelectInput(session,
+                        inputId = "availableDataFields",
+                        choices = datafields$availableDataFields[!datafields$availableDataFields %in% datafields$selectedDataFields[[input$dataFieldChoice]]]
       )
     }
     
     dbDisconnect(con)
-    
   }
 
   updateCurrentTab <- function(){
@@ -764,15 +771,15 @@ server <- function(input, output, session){
         if(titleRegexp == ""){q10 <- '")'; q11 <- ""}
         q12 <- ' and ak.annonce_id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
-        if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
-          for(i in 1:length(datafields$selectedDataFields)){
-            if(i == 1){
-              datafieldsRegexp <- datafields$selectedDataFields[i]
-            } else {
-              datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
-            }
-          }
-        }
+        # if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
+        #   for(i in 1:length(datafields$selectedDataFields)){
+        #     if(i == 1){
+        #       datafieldsRegexp <- datafields$selectedDataFields[i]
+        #     } else {
+        #       datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
+        #     }
+        #   }
+        # }
         q13 <- paste0("'", datafieldsRegexp, "'")
         q14 <- ')'
         if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
@@ -952,16 +959,16 @@ server <- function(input, output, session){
     
     # Build optional metadata criteria
     metadataParam <- ""
-    if(FALSE && length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
-      for(i in 1:length(datafields$selectedDataFields)){
-        if(i == 1){
-          datafieldsRegexp <- datafields$selectedDataFields[i]
-        } else {
-          datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
-        }
-      }
-      #metadataParam <- paste0(', "kompetence": {"idList": [', paste(datafields$selectedDataFields), collapse=','),']}')
-    }
+    # if(FALSE && length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
+    #   for(i in 1:length(datafields$selectedDataFields)){
+    #     if(i == 1){
+    #       datafieldsRegexp <- datafields$selectedDataFields[i]
+    #     } else {
+    #       datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
+    #     }
+    #   }
+    #   #metadataParam <- paste0(', "kompetence": {"idList": [', paste(datafields$selectedDataFields), collapse=','),']}')
+    # }
     
     JSONvalue = paste0("{", periodParam, regionParam, textcontentParam, kompetenceParam, metadataParam, "}") 
     return(JSONvalue)
@@ -1030,15 +1037,15 @@ server <- function(input, output, session){
         q11 <- paste0("\"",titleRegexp,"\"")
         q12 <- ' and ak.annonce_id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
-        if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
-          for(i in 1:length(datafields$selectedDataFields)){
-            if(i == 1){
-              datafieldsRegexp <- datafields$selectedDataFields[i]
-            } else {
-              datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
-            }
-          }
-        }
+        # if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
+        #   for(i in 1:length(datafields$selectedDataFields)){
+        #     if(i == 1){
+        #       datafieldsRegexp <- datafields$selectedDataFields[i]
+        #     } else {
+        #       datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
+        #     }
+        #   }
+        # }
         q13 <- paste0("'", datafieldsRegexp, "'")
         q14 <- ')'
         if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
@@ -1167,15 +1174,15 @@ server <- function(input, output, session){
         q11 <- paste0("\"",titleRegexp,"\"")
         q12 <- ' and ak.annonce_id in (select annonce_id from annonce_datafield where dataValue regexp '
         datafieldsRegexp <- ""
-        if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
-          for(i in 1:length(datafields$selectedDataFields)){
-            if(i == 1){
-              datafieldsRegexp <- datafields$selectedDataFields[i]
-            } else {
-              datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
-            }
-          }
-        }
+        # if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
+        #   for(i in 1:length(datafields$selectedDataFields)){
+        #     if(i == 1){
+        #       datafieldsRegexp <- datafields$selectedDataFields[i]
+        #     } else {
+        #       datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
+        #     }
+        #   }
+        # }
         q13 <- paste0("'", datafieldsRegexp, "'")
         q14 <- ')'
         if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
