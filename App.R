@@ -1030,7 +1030,7 @@ server <- function(input, output, session){
         setProgress(0)
         con <- dbConnect(RMariaDB::MariaDB(), port = credentials.port, host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
-        qq <- paste0("SELECT a._id, a.title FROM annonce a JOIN ", getSearchAdResultTableName(), " c ON a._id=c.annonce_id")
+        qq <- paste0("SELECT a._id, a.title FROM annonce a JOIN ", getSearchAdResultTableName(), " c ON a._id=c.annonce_id ORDER BY a._id DESC")
         csvData$annonceListe <- dbGetQuery(con, qq)
         dbDisconnect(con)
         
