@@ -560,41 +560,31 @@ server <- function(input, output, session){
   
   ############################################################     FUNCTIONS     ############################################################
   
-  updateDataFields <- function() {
-    con <-
-      dbConnect(
-        RMariaDB::MariaDB(),
-        host = credentials.host,
-        user = credentials.user,
-        password = credentials.password,
-        port = credentials.port,
-        db = credentials.db,
-        bigint = c("numeric")
-      )
+  updateDataFields <- function(){
+    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
     stopifnot(is.object(con))
     
-    query <-
-      paste0(
-        " from annonce_datafield where (select _id from datafield where name = '",
-        input$dataFieldChoice,
-        "') = datafield_id and dataValue is not null"
-      )
-    if (input$dataFieldSearchField != "") {
-      query <-
-        paste0(query,
-               " and dataValue like '%",
-               input$dataFieldSearchField,
-               "%'")
+    if(input$dataFieldSearchField == ""){
+      query <- paste0(" from annonce_datafield where (select _id from datafield where name = '", input$dataFieldChoice, "') = datafield_id and dataValue is not null")
+    } else {
+      query <- paste0(" from annonce_datafield where (select _id from datafield where name = '", input$dataFieldChoice, "') = datafield_id and dataValue is not null and dataValue like '%", input$dataFieldSearchField, "%'")
     }
-    updateSelectInput(session,
-                      inputId = "availableDataFields",
-                      choices = as.matrix(dbGetQuery(
-                        con, paste0("select distinct dataValue", query)
-                      )))
+    
+    count <- paste0("select count(distinct dataValue)",query)
+    
+    if(dbGetQuery(con,count) > 1000){
+      showNotification("Søgekriteriet er for bredt, specifikér søgningen!", type= "error")
+    } else {
+      updateSelectInput(session,
+                        inputId = "availableDataFields",
+                        choices = as.matrix(dbGetQuery(con,paste0("select distinct dataValue",query)))
+      )
+    }
     
     dbDisconnect(con)
+    
   }
-  
+
   updateCurrentTab <- function(){
     if (current$tab == 1){
       updateKompetenceDiagram()
