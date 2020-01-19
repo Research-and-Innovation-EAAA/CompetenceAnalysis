@@ -958,17 +958,17 @@ server <- function(input, output, session){
     }
     
     # Build optional metadata criteria
-    metadataParam <- ""
-    # if(FALSE && length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
-    #   for(i in 1:length(datafields$selectedDataFields)){
-    #     if(i == 1){
-    #       datafieldsRegexp <- datafields$selectedDataFields[i]
-    #     } else {
-    #       datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
-    #     }
-    #   }
-    #   #metadataParam <- paste0(', "kompetence": {"idList": [', paste(datafields$selectedDataFields), collapse=','),']}')
-    # }
+    fieldconditions <- list()
+    for (datafieldname in names(datafields$selectedDataFields)) {
+      if (length(datafields$selectedDataFields[[datafieldname]])>0){
+        fieldconditions <- c(fieldconditions, paste0('"', datafieldname,'": {"valueList": ["' ,paste(datafields$selectedDataFields[[datafieldname]], collapse='","'), '"]}'))
+      }
+    }
+    if(length(fieldconditions) > 0){
+      metadataParam <- paste0(', "metadata":{',paste(fieldconditions, collapse = ", "), "}")
+    } else {
+      metadataParam <- ""
+    }
     
     JSONvalue = paste0("{", periodParam, regionParam, textcontentParam, kompetenceParam, metadataParam, "}") 
     return(JSONvalue)
