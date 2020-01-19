@@ -255,8 +255,6 @@ server <- function(input, output, session){
     setProgress(1)
   })
 
-  #fullDataFieldDefinitions <- dbGetQuery(con, 'select distinct dataField_name, dataValue from annonce_datafield adf order by dataField_name')
-    
   output$downloadAnnonceliste <- downloadHandler(
     filename = 'annonce_liste.csv',
     content = function(file){
@@ -920,12 +918,12 @@ server <- function(input, output, session){
       
       if(titleSearch) {
         titleRegexpVal <-paste(datafields$titles, collapse='|')
-        titleRegexpVal <- paste0("(?i)[[:<:]](", titleRegexpVal,")[[:>:]]")
+        titleRegexpVal <- paste0("(?i)(", titleRegexpVal,")")
       }
       
       if(textSearch) {
         textRegexpVal <-paste(datafields$texts, collapse='|')
-        textRegexpVal <- paste0("(?i)[[:<:]](", textRegexpVal,")[[:>:]]")
+        textRegexpVal <- paste0("(?i)(", textRegexpVal,")")
       }
       
       if(titleSearch && textSearch) {
@@ -973,10 +971,18 @@ server <- function(input, output, session){
     JSONvalue = paste0("{", periodParam, regionParam, textcontentParam, kompetenceParam, metadataParam, "}") 
     return(JSONvalue)
   }
-  
-  updateProgressionDiagram <- function(){
-    print(buildSearchParameterJSON())
+
+  getSearchAdResultTableName <- function()  {
+    con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+    stopifnot(is.object(con))
+    dbQuery <- paste0("CALL `prepareCacheTable`('",buildSearchParameterJSON(),"')")
+    result <- dbGetQuery(con, dbQuery)
+    dbDisconnect(con)
     
+    return(result[["cacheTableName"]])
+  }
+    
+  updateProgressionDiagram <- function(){
     if(length(kompetencer$sk) != 0){
       withProgress(message = "Opdaterer diagram", expr = {
         setProgress(0)
@@ -989,82 +995,36 @@ server <- function(input, output, session){
         for (index in matchIndexes){
           kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
         }
+        
+        cacheTableName <- getSearchAdResultTableName()
+        setProgress(1/7)
         con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
-        setProgress(1/7)
         
-        periodQuery <- ""
         if (input$progressionDateFormat == "Uge"){
-          periodQuery <- 'DATE_FORMAT(a_timeStamp,"%Y-%U")'
+          periodQuery <- "DATE_FORMAT(timeStamp,'%Y-%U')"
         }
         else if (input$progressionDateFormat == "Måned"){
-          periodQuery <- 'DATE_FORMAT(a_timeStamp,"%Y-%m")'
+          periodQuery <- "DATE_FORMAT(timeStamp,'%Y-%m')"
         }
         else if (input$progressionDateFormat == "År"){
-          periodQuery <- 'DATE_FORMAT(a_timeStamp,"%Y")'
+          periodQuery <- "DATE_FORMAT(timeStamp,'%Y')"
+        }
+        else {
+          stop()
         }
         
-        q0 <- paste0("select ", periodQuery)
-        q1 <- " period, count(DISTINCT annonce_id) amount from annonce_kompetence ak where ak.kompetence_id in"
-        #if (input$matchChoice == "Machine-Learned"){
-        #  q1 <- 'select cast(a.timeStamp as date) as date, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where k._id = '
-        #}
-        #q2 is kompetence id, set in loop due to it being the one iterated on.
-        ####REGION####
-        q3 <- ' and ak.a_region_name = "'
-        q4 <- input$regChoice            #region name
-        q5 <- '" '
-        if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region where-clause if the region is 'Alle regioner'
-        ##############
-        q6 <- ' and ak.a_timeStamp between DATE("'
-        q7 <- format(input$dateRange[1]) #Start date
-        q8 <- '") and DATE("'
-        q9 <- format(input$dateRange[2]) #End date
-        q10 <- '") and a_title regexp '
-        titleRegexp <- ""
-        if(length(datafields$titles) > 0){ #check if user has entered any search terms
-          for(i in 1:length(datafields$titles)){
-            if(i == 1){
-              titleRegexp <- datafields$titles[i]
-            } else {
-              titleRegexp <-paste0(titleRegexp,"|",datafields$titles[i])
-            }
-          }
-        } else {
-          titleRegexp <- ".*"
-        }
-        q11 <- paste0("\"",titleRegexp,"\"")
-        q12 <- ' and ak.annonce_id in (select annonce_id from annonce_datafield where dataValue regexp '
-        datafieldsRegexp <- ""
-        # if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
-        #   for(i in 1:length(datafields$selectedDataFields)){
-        #     if(i == 1){
-        #       datafieldsRegexp <- datafields$selectedDataFields[i]
-        #     } else {
-        #       datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
-        #     }
-        #   }
-        # }
-        q13 <- paste0("'", datafieldsRegexp, "'")
-        q14 <- ')'
-        if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
-        q15 <- ' group by cast(ak.a_timeStamp as date)'
-        
-        
+        qq <-
+          paste0(
+            "SELECT ",
+            periodQuery,
+            " period, count(*) amount FROM annonce a JOIN ",
+            cacheTableName,
+            " c ON a._id=c.annonce_id group by period"
+          )
+        print(qq)
         progressionData <- data.frame()
-        q2 <- "("
-        for (i in 1:length(kompetenceIds)){
-          if (i < length(kompetenceIds)){
-            q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
-          }
-          else{
-            q2 <- paste0(q2, kompetenceIds[i],') ')
-          }
-        }
-        
-        qq <- paste0(q0, q1, q2, q3, q4, q5, q6, q7, q8, q9,q10,q11, q12,q13,q14,q15)
-        #print(qq)
         formattedData <- rbind(progressionData, dbGetQuery(con, qq))
 
         dbDisconnect(con)
