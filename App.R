@@ -248,7 +248,6 @@ server <- function(input, output, session){
     output$annonceCountField <- renderText(paste0(annonceCount, " jobannoncer"))
     setProgress(2/3)
     
-    
     treeString <- dbGetQuery(con, 'select shinyTreeJSON from global where _id = 1')[1,1]
     output$tree <- renderEmptyTree()
     updateTree(session,"tree", treeString)
@@ -724,81 +723,23 @@ server <- function(input, output, session){
     if(length(kompetencer$sk) != 0){
       withProgress(message = "Opdaterer Diagram", expr = {
         setProgress(0)
-        matchIndexes <- list()
-        categoryMatrix <- as.matrix(fullCategoryData)
-        for (kompetence in kompetencer$sk){
-          matchIndexes <- c(matchIndexes, which(categoryMatrix[,1] == kompetence))
-        }
-        
-        kompetenceIds <- list()
-        for (index in matchIndexes){
-          kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
-        }
         con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
         setProgress(1/5)
-        q1 <- 'select distinct ak.k_prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak where '
-        #if (input$matchChoice == "Machine-Learned"){
-        #  q1 <- 'select distinct k.prefferredLabel, count(ak.kompetence_id) as amount from kompetence k left join annonce_kompetence_machine ak on k._id = ak.kompetence_id left join annonce a on ak.annonce_id = a._id where '
-        #}
-        q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
-        ####REGION####
-        q3 <- ' and ak.a_region_name = "'
-        q4 <- input$regChoice            #region name
-        q5 <- '" '
-        if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
-        ##############
-        q6 <- ' and ak.a_timeStamp between DATE("'
-        q7 <- format(input$dateRange[1]) #Start date
-        q8 <- '") and DATE("'
-        q9 <- format(input$dateRange[2]) #End date
-        q10 <- '") and a_title regexp '
-        titleRegexp <- ""
-        if(length(datafields$titles) > 0){ #check if user has entered any search terms
-          for(i in 1:length(datafields$titles)){
-            if(i == 1){
-              titleRegexp <- datafields$titles[i]
-            } else {
-              titleRegexp <-paste0(titleRegexp,"|",datafields$titles[i])
-            }
+        if(input$matchAllCompetences){
+          matchIndexes <- list()
+          categoryMatrix <- as.matrix(fullCategoryData)
+          for (kompetence in kompetencer$sk){
+            matchIndexes <- c(matchIndexes, which(categoryMatrix[,1] == kompetence))
           }
-        } 
-        q11 <- paste0("\"",titleRegexp,"\"")
-        if(titleRegexp == ""){q10 <- '")'; q11 <- ""}
-        q12 <- ' and ak.annonce_id in (select annonce_id from annonce_datafield where dataValue regexp '
-        datafieldsRegexp <- ""
-        # if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
-        #   for(i in 1:length(datafields$selectedDataFields)){
-        #     if(i == 1){
-        #       datafieldsRegexp <- datafields$selectedDataFields[i]
-        #     } else {
-        #       datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
-        #     }
-        #   }
-        # }
-        q13 <- paste0("'", datafieldsRegexp, "'")
-        q14 <- ')'
-        if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
-        q15 <- ' group by ak.kompetence_id order by amount desc limit 30'
-        
-        if(!input$matchAllCompetences){
-          q1 <- 'select distinct ak.k_prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak join (select distinct aki.annonce_id from kompetence k join annonce_kompetence as aki on k._id = aki.kompetence_id and aki.a_timeStamp between DATE("'
-          q1 <- paste0(q1,format(input$dateRange[1]),'") and DATE("',format(input$dateRange[2]),'") where k._id in')
-          q2 <- '('
-          
-          for (i in 1:length(kompetenceIds)){
-            if (i < length(kompetenceIds)){
-              q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
-            }
-            else{
-              q2 <- paste0(q2, kompetenceIds[i],')) as ad_ids')
-            }
+
+          kompetenceIds <- list()
+          for (index in matchIndexes){
+            kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
           }
-          q2 <- paste0(q2, ' on ak.annonce_id=ad_ids.annonce_id')
-        } else {
           
-          q2 <- ' ak.kompetence_id IN (select max(komp._id) from kompetence komp where komp._id in ('
+          q2 <- ' AND ak.kompetence_id IN (select max(komp._id) from kompetence komp where komp._id in ('
           for (i in 1:length(kompetenceIds)){
             if (i < length(kompetenceIds)){
               q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
@@ -807,37 +748,42 @@ server <- function(input, output, session){
               q2 <- paste0(q2, kompetenceIds[i],') group by komp.prefferredLabel) ')
             }
           }
+        } else {
+          q2 <- '';
         }
 
         setProgress(2/5)
         
-        qq <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12,q13,q14,q15)
-        csvDataQuery <- paste0(q1,q2,q3,q4,q5,q6,q7,q8,q9,q10,q11,q12,q13,q14, ' group by ak.kompetence_id order by amount desc')
-        #print(qq)
-        kompetenceData <- dbGetQuery(con, qq)
+        csvDataQuery <- paste0(
+          "select distinct ak.k_prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak JOIN ",
+          getSearchAdResultTableName(),
+          " c ON ak.annonce_id=c.annonce_id ",
+          q2,
+          " GROUP BY ak.kompetence_id ORDER BY amount desc limit 30"
+        )
+        print(csvDataQuery)
         csvData$kompetenceListe <- dbGetQuery(con,csvDataQuery)
-        #print(kompetenceData)
-        
+
         dbDisconnect(con)
         
         setProgress(3/5)
-        if (dim(kompetenceData)[1] != 0) {
+        if (dim(csvData$kompetenceListe)[1] != 0) {
           # If i order the table in the correct order in the SQL query the 'Limit 30' option cuts off the biggest instead of the smallest.
           # Which is why the table must be ordered after the query.
-          kompetenceData <- kompetenceData[order(kompetenceData$amount, decreasing = FALSE),]
+          csvData$kompetenceListe <- csvData$kompetenceListe[order(csvData$kompetenceListe$amount, decreasing = FALSE),]
           
           setProgress(4/5)
           output$kompetenceDiagram <- renderPlot({
             
             par(mar = c(5,18,4,2) + 0.1)
-            ylim <- c(0, 1.2*max(kompetenceData$amount))
-            xx <- barplot(kompetenceData$amount, xlim = ylim, 
+            ylim <- c(0, 1.2*max(csvData$kompetenceListe$amount))
+            xx <- barplot(csvData$kompetenceListe$amount, xlim = ylim, 
                     main=paste0("Kompetencer i jobopslag\n", input$regChoice, " fra ", input$dateRange[1], " til ", input$dateRange[2], "."), 
-                    names.arg = kompetenceData$k_prefferredLabel,
+                    names.arg = csvData$kompetenceListe$k_prefferredLabel,
                     las = 2,
                     horiz = TRUE
             )
-            text(y = xx, x = kompetenceData$amount, label = kompetenceData$amount, pos = 4, cex = 1.2, col = "blue")
+            text(y = xx, x = csvData$kompetenceListe$amount, label = csvData$kompetenceListe$amount, pos = 4, cex = 1.2, col = "blue")
           })
           output$kompetenceErrorField <- renderText("")
         }
@@ -1082,89 +1028,17 @@ server <- function(input, output, session){
     if(length(kompetencer$sk) != 0){
       withProgress(message = "Opdaterer annonceliste", expr = {
         setProgress(0)
-        matchIndexes <- list()
-        categoryMatrix <- as.matrix(fullCategoryData)
-        for (kompetence in kompetencer$sk){
-          matchIndexes <- c(matchIndexes, which(categoryMatrix[,1] == kompetence))
-        }
-        kompetenceIds <- list()
-        for (index in matchIndexes){
-          kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
-        }
         con <- dbConnect(RMariaDB::MariaDB(), port = credentials.port, host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
-        
-        setProgress(1/3)
-        
-        q1 <- 'select ak.annonce_id, ak.a_title from annonce_kompetence ak where '
-        q2 <- '' #Kompetence id, set in loop due to it being the one iterated on.
-        ####REGION####
-        q3 <- ' and ak.a_region_name = "'
-        q4 <- input$regChoice            #region name
-        q5 <- '" '
-        if (q4 == "Alle regioner"){q3=""; q4=""; q5=""} #Cuts out region select if the region is 'Alle regioner'
-        ##############
-        q6 <- ' and ak.a_timeStamp between DATE("'
-        q7 <- format(input$dateRange[1]) #Start date
-        q8 <- '") and DATE("'
-        q9 <- format(input$dateRange[2]) #End date
-        q10 <- '") and a_title regexp '
-        titleRegexp <- "" 
-        if(length(datafields$titles) > 0){ #check if user has entered any search terms
-          for(i in 1:length(datafields$titles)){
-            if(i == 1){
-              titleRegexp <- datafields$titles[i]
-            } else {
-              titleRegexp <-paste0(titleRegexp,"|",datafields$titles[i])
-            }
-          }
-        } else {
-          titleRegexp <- ".*"
-        }
-        q11 <- paste0("\"",titleRegexp,"\"")
-        q12 <- ' and ak.annonce_id in (select annonce_id from annonce_datafield where dataValue regexp '
-        datafieldsRegexp <- ""
-        # if(length(datafields$selectedDataFields) > 0){ #check if user has entered any search terms
-        #   for(i in 1:length(datafields$selectedDataFields)){
-        #     if(i == 1){
-        #       datafieldsRegexp <- datafields$selectedDataFields[i]
-        #     } else {
-        #       datafieldsRegexp <-paste0(datafieldsRegexp,"|",datafields$selectedDataFields[i])
-        #     }
-        #   }
-        # }
-        q13 <- paste0("'", datafieldsRegexp, "'")
-        q14 <- ')'
-        if(datafieldsRegexp == ""){q12=""; q13=""; q14=""} #Cuts out datafield search if no datafields entered.
-         
-        
-        q15 <- ' group by ak.annonce_id'
-        
-        q2 <- ' ak.kompetence_id IN ('
-        for (i in 1:length(kompetenceIds)){
-          if (i < length(kompetenceIds)){
-            q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
-          }
-          else{
-            q2 <- paste0(q2, kompetenceIds[i],') ')
-          }
-        }
-        
-        query <- paste0(q1, q2, q3, q4, q5, q6, q7, q8, q9, q10, q11, q12, q13, q14, q15)
-        annonceData <- dbGetQuery(con,query)
-        
-        # .csv data query
-        csvSubQuery <- paste0('select ak.annonce_id from annonce_kompetence ak where ', q2, q3, q4, q5, q6, q7, q8, q9,q10,q11,q12,q13,q14)
-        csvQuery <- paste0('select distinct ako.annonce_id, ako.a_title, ako.k_prefferredLabel from annonce_kompetence ako where ako.annonce_id in (', csvSubQuery,')') 
-        csvData$annonceListe <- dbGetQuery(con,csvQuery)
-        
+        qq <- paste0("SELECT a._id, a.title FROM annonce a JOIN ", getSearchAdResultTableName(), " c ON a._id=c.annonce_id")
+        csvData$annonceListe <- dbGetQuery(con, qq)
         dbDisconnect(con)
         
         setProgress(2/3)
         annonceListContents <- list()
-        if (dim(annonceData)[1] != 0){
-          for (i in 1:nrow(annonceData)){
-            annonceListContents <- c(annonceListContents, paste0(annonceData[i,1], " || ", annonceData[i, 2]))
+        if (dim(csvData$annonceListe)[1] != 0){
+          for (i in 1:nrow(csvData$annonceListe)){
+            annonceListContents <- c(annonceListContents, paste0(csvData$annonceListe[i, 1], " || ", csvData$annonceListe[i, 2]))
           }
           
           updateSelectInput(session,
