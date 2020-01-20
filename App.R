@@ -178,7 +178,7 @@ ui <- fluidPage(
     ),
     column(6,
            fluidRow(
-             column(4,
+             column(12,
                     tags$h3(i18n$t("Search results"), textOutput(outputId = "resultCountField", inline = TRUE))
                     )
             
