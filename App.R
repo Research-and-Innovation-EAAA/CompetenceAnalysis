@@ -16,10 +16,10 @@ ui <- fluidPage(
   fluidRow(style = "margin-top: 5px;",
     column(6, style = "margin-top: 0px; font-size: 16px;", 
            titlePanel(title = i18n$t("COMPETENCE ANALYSIS"), windowTitle = "Annonce Analyse"),
-           div(style = "font-size: 20px;", textOutput(outputId = "annonceCountField")),
-           tags$span("Kilde: "),
+           div(style = "font-size: 20px;", textOutput(outputId = "adCountField")),
+           tags$span(paste0(i18n$t("Source:")," ")),
            tags$a(href="https://www.jobindex.dk","JobIndex"),
-           tags$span(" og "),
+           tags$span(paste0(" ",i18n$t("and")," ")),
            tags$a(href="https://www.careerjet.dk","CareerJet")
     ),
     column(6, style = "margin-top: 5px; text-align: right", img(src = "EAAA_Logo.jpg"))
@@ -179,7 +179,7 @@ ui <- fluidPage(
     column(6,
            fluidRow(
              column(4,
-                    tags$h3(i18n$t("Search results"))
+                    tags$h3(i18n$t("Search results"), textOutput(outputId = "resultCountField", inline = TRUE))
                     )
             
            ),
@@ -245,7 +245,7 @@ server <- function(input, output, session){
     fullCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id, grp from kompetence order by prefferredLabel asc')
     setProgress(1/3)
     annonceCount <- dbGetQuery(con, 'select count(*) from annonce')[1,1]
-    output$annonceCountField <- renderText(paste0(annonceCount, " jobannoncer"))
+    output$adCountField <- renderText(paste0(annonceCount," ",i18n$t("job ads")))
     setProgress(2/3)
     
     treeString <- dbGetQuery(con, 'select shinyTreeJSON from global where _id = 1')[1,1]
@@ -761,7 +761,7 @@ server <- function(input, output, session){
           q2,
           " GROUP BY ak.kompetence_id ORDER BY amount desc limit 30"
         )
-        print(csvDataQuery)
+        #print(csvDataQuery)
         csvData$kompetenceListe <- dbGetQuery(con,csvDataQuery)
 
         dbDisconnect(con)
@@ -914,7 +914,7 @@ server <- function(input, output, session){
     }
     
     JSONvalue = paste0("{", periodParam, regionParam, textcontentParam, kompetenceParam, metadataParam, "}") 
-    print(JSONvalue)
+    #print(JSONvalue)
     return(JSONvalue)
   }
 
@@ -924,9 +924,14 @@ server <- function(input, output, session){
     con <- dbConnect(RMariaDB::MariaDB(), host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
     stopifnot(is.object(con))
     result <- dbGetQuery(con, dbQuery)
+    tableName <- result[["cacheTableName"]]
+    result <- dbGetQuery(con, paste0("SELECT count(*) numberOfFoundAds FROM ", tableName))
+    numberOfFoundAds <- result[["numberOfFoundAds"]]
+    output$resultCountField <- renderText(paste0(" (",numberOfFoundAds,")"))
+    #print(numberOfFoundAds)
     dbDisconnect(con)
     
-    return(result[["cacheTableName"]])
+    return(tableName)
   }
     
   updateProgressionDiagram <- function(){
@@ -961,7 +966,7 @@ server <- function(input, output, session){
             cacheTableName,
             " c ON a._id=c.annonce_id group by period"
           )
-        print(qq)
+        #print(qq)
         progressionData <- data.frame()
         formattedData <- rbind(progressionData, dbGetQuery(con, qq))
 
