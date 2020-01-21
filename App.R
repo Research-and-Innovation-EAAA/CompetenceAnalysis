@@ -872,14 +872,14 @@ server <- function(input, output, session){
       }
       
       if(titleSearch && textSearch) {
-        searchcontentType <- setClass("Searchcontent", slots = c(titleRegexp="character", textRegexp="character"))
-        searchcontentObject <- searchcontentType(textRegexp = textRegexpVal, titleRegexp = titleRegexpVal )
+        searchcontentType <- setClass("Searchcontent", slots = c(titleRegexp="character", bodyRegexp="character"))
+        searchcontentObject <- searchcontentType(bodyRegexp = textRegexpVal, titleRegexp = titleRegexpVal )
       } else if(titleSearch) {
         searchcontentType <- setClass("Searchcontent", slots = c(titleRegexp="character"))
         searchcontentObject <- searchcontentType(titleRegexp = titleRegexpVal )
       } else {
-        searchcontentType <- setClass("Searchcontent", slots = c(textRegexp="character"))
-        searchcontentObject <- searchcontentType(textRegexp = textRegexpVal)
+        searchcontentType <- setClass("Searchcontent", slots = c(bodyRegexp="character"))
+        searchcontentObject <- searchcontentType(bodyRegexp = textRegexpVal)
       }
       
       textcontentParam <- paste0(', "textcontent":', textcontentParam, toJSON(unclass(searchcontentObject), force=TRUE, auto_unbox=TRUE))
