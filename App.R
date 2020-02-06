@@ -249,10 +249,11 @@ server <- function(input, output, session){
     setProgress(2/3)
     
     treeString <- dbGetQuery(con, 'select shinyTreeJSON from global where _id = 1')[1,1]
+    dbDisconnect(con)
+
     output$tree <- renderEmptyTree()
     updateTree(session,"tree", treeString)
     setProgress(1)
-    dbDisconnect(con)
   })
 
   output$downloadAnnonceliste <- downloadHandler(
@@ -919,21 +920,41 @@ server <- function(input, output, session){
   }
 
   getSearchAdResultTableName <- function()  {
-    dbQuery <- paste0("CALL `prepareCacheTable`('",buildSearchParameterJSON(),"')")
-    #print(dbQuery)
-    con <- dbConnect(RMariaDB::MariaDB(), host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+    searchParam <- buildSearchParameterJSON()
+    dbQuery <-
+      paste0("CALL `prepareCacheTable`('", searchParam, "')")
+    con <-
+      dbConnect(
+        RMariaDB::MariaDB(),
+        host = credentials.host,
+        user = credentials.user,
+        password = credentials.password,
+        port = credentials.port,
+        db = credentials.db,
+        bigint = c("numeric")
+      )
     stopifnot(is.object(con))
     result <- dbGetQuery(con, dbQuery)
     tableName <- result[["cacheTableName"]]
-    result <- dbGetQuery(con, paste0("SELECT count(*) numberOfFoundAds FROM ", tableName))
+    #print(paste0("tableName: >", tableName, "<"))
+    #print(paste0("lastSearchTable: >", session$userData$lastSearchTable, "<"))
+    if (is.null(tableName) || paste0(tableName) == '') {
+      tableName <- session$userData$lastSearchTable
+    } else {
+      session$userData$lastSearchTable <- tableName
+    }
+    result <-
+      dbGetQuery(con,
+                 paste0("SELECT count(*) numberOfFoundAds FROM ", tableName))
     numberOfFoundAds <- result[["numberOfFoundAds"]]
-    output$resultCountField <- renderText(paste0(" (",numberOfFoundAds,")"))
-    #print(numberOfFoundAds)
+    output$resultCountField <-
+      renderText(paste0(" (", numberOfFoundAds, ")"))
+    
     dbDisconnect(con)
     
     return(tableName)
   }
-    
+  
   updateProgressionDiagram <- function(){
     if(length(kompetencer$sk) != 0){
       withProgress(message = "Opdaterer diagram", expr = {
