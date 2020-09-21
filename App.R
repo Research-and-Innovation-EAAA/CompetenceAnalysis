@@ -727,7 +727,7 @@ server <- function(input, output, session){
         stopifnot(is.object(con))
         
         setProgress(1/5)
-        if(input$matchAllCompetences){
+        if(input$matchAllCompetences && length(kompetencer$sk) != 0){
           matchIndexes <- list()
           categoryMatrix <- as.matrix(fullCategoryData)
           for (kompetence in kompetencer$sk){
@@ -738,6 +738,7 @@ server <- function(input, output, session){
           for (index in matchIndexes){
             kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
           }
+          
           
           q2 <- ' AND ak.kompetence_id IN (select max(komp._id) from kompetence komp where komp._id in ('
           for (i in 1:length(kompetenceIds)){
@@ -914,7 +915,7 @@ server <- function(input, output, session){
     }
     
     JSONvalue = paste0("{", periodParam, regionParam, textcontentParam, kompetenceParam, metadataParam, "}") 
-    #print(JSONvalue)
+    print(JSONvalue)
     return(JSONvalue)
   }
 
