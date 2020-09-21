@@ -181,7 +181,6 @@ ui <- fluidPage(
              column(12,
                     tags$h3(i18n$t("Search results"), textOutput(outputId = "resultCountField", inline = TRUE))
                     )
-            
            ),
            tabsetPanel(id = "outputPanel",
              tabPanel(title=i18n$t("Competence Comparison"),
@@ -721,7 +720,7 @@ server <- function(input, output, session){
   }
   
   updateKompetenceDiagram <- function(){
-    if(length(kompetencer$sk) != 0){
+    #if(length(kompetencer$sk) != 0){
       withProgress(message = "Opdaterer Diagram", expr = {
         setProgress(0)
         con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
@@ -794,11 +793,11 @@ server <- function(input, output, session){
         }
         setProgress(5/5)
       })
-    }
-    else{
-      output$kompetenceErrorField <- renderText("")
-      output$kompetenceDiagram <- NULL
-    }
+    #}
+    #else{
+    #  output$kompetenceErrorField <- renderText("")
+    #  output$kompetenceDiagram <- NULL
+    #}
   }
  
   buildSearchParameterJSON <- function() {
@@ -956,7 +955,7 @@ server <- function(input, output, session){
   }
   
   updateProgressionDiagram <- function(){
-    if(length(kompetencer$sk) != 0){
+    #if(length(kompetencer$sk) != 0){
       withProgress(message = "Opdaterer diagram", expr = {
         
         if (input$progressionDateFormat == "Uge"){
@@ -1043,15 +1042,15 @@ server <- function(input, output, session){
         }
         setProgress(1)
       })
-    }
-    else{
-      output$progressionErrorField <- renderText("")
-      output$progressionDiagram <- NULL
-    }
+    #}
+    #else{
+    #  output$progressionErrorField <- renderText("")
+    #  output$progressionDiagram <- NULL
+    #}
   }
   
   updateAnnonceList <- function(){
-    if(length(kompetencer$sk) != 0){
+    #if(length(kompetencer$sk) != 0){
       withProgress(message = "Opdaterer annonceliste", expr = {
         setProgress(0)
         con <- dbConnect(RMariaDB::MariaDB(), port = credentials.port, host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
@@ -1083,14 +1082,14 @@ server <- function(input, output, session){
         setProgress(1)
       })
       
-    }
-    else{
-      output$annonceErrorField <- renderText("")
-      updateSelectInput(session,
-                        inputId = "annonceList", 
-                        choices = list()
-      )
-    }
+    #}
+    #else{
+    #  output$annonceErrorField <- renderText("")
+    #  updateSelectInput(session,
+    #                    inputId = "annonceList", 
+    #                    choices = list()
+    #  )
+    #}
   }
   
   ############################################################################################################################################
