@@ -147,8 +147,12 @@
         "da": "CVR-Oplysninger:"
       },
       {
-        "en": "Ad Text",
+        "en": "Ad Text:",
         "da": "Annoncetekst:"
+      },
+      {
+        "en": "Minimum occurences",
+        "da": "Minimum forekomster"
       }
     ]
 }

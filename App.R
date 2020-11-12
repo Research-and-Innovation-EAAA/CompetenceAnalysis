@@ -33,7 +33,16 @@ ui <- fluidPage(
            tabsetPanel(
              tabPanel(title = i18n$t("Competences"),
            wellPanel(
-             shinyTree("tree", checkbox = TRUE),
+             fluidRow(
+               column(8,
+                      shinyTree("tree", 
+                                checkbox = TRUE
+                      )
+               ),
+               column(4,
+                      numericInput("minimumMatches", i18n$t("Minimum occurences"), 1, min = 1)
+               )
+             ),
              fluidRow(style = "margin-top: 15px;"),
              fluidRow(
                column(4,
@@ -269,6 +278,10 @@ server <- function(input, output, session){
   )
   
   observeEvent(input$dateRange, ignoreInit = TRUE, {
+    updateCurrentTab()
+  })
+  
+  observeEvent(input$minimumMatches, ignoreInit = TRUE, {
     updateCurrentTab()
   })
   
@@ -728,12 +741,12 @@ server <- function(input, output, session){
         
         setProgress(1/5)
         if(input$matchAllCompetences && length(kompetencer$sk) != 0){
+          
           matchIndexes <- list()
           categoryMatrix <- as.matrix(fullCategoryData)
           for (kompetence in kompetencer$sk){
             matchIndexes <- c(matchIndexes, which(categoryMatrix[,1] == kompetence))
           }
-
           kompetenceIds <- list()
           for (index in matchIndexes){
             kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
@@ -821,6 +834,7 @@ server <- function(input, output, session){
     #     "bodyRegexp": "(?i)Projektleder"
     #   },
     #   "kompetence": {
+    #     "minimumMatches": 1,
     #     "idList": [
     #       158861
     #       ],
@@ -898,7 +912,7 @@ server <- function(input, output, session){
       for (index in matchIndexes) {
         kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
       }
-      kompetenceParam <- paste0(', "kompetence": {"idList": [', paste(kompetenceIds, collapse=','),']}')
+      kompetenceParam <- paste0(', "kompetence": {"minimumMatches":', input$minimumMatches,',"idList": [', paste(kompetenceIds, collapse=','),']}')
     }
     
     # Build optional metadata criteria
