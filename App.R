@@ -302,21 +302,21 @@ server <- function(input, output, session){
   })
   
   observeEvent(input$outputPanel, ignoreInit = TRUE, {
-    if (input$outputPanel == "Kompetencesammenligning"){
+    if (input$outputPanel == i18n$t("Competence Comparison")){
       current$tab <- 1
       if (tabUpdates$kompetence){
         tabUpdates$kompetence <- FALSE
         updateKompetenceDiagram()
       }
     }
-    else if (input$outputPanel == "Progression"){
+    else if (input$outputPanel == i18n$t("Progression")){
       current$tab <- 2
       if (tabUpdates$progression){
         tabUpdates$progression <- FALSE
         updateProgressionDiagram()
       }
     }
-    else if (input$outputPanel == "Annonceliste"){
+    else if (input$outputPanel == i18n$t("Ad List")){
       current$tab <- 3
       if (tabUpdates$annonce){
         tabUpdates$annonce <- FALSE
@@ -929,7 +929,7 @@ server <- function(input, output, session){
     }
     
     JSONvalue = paste0("{", periodParam, regionParam, textcontentParam, kompetenceParam, metadataParam, "}") 
-    print(JSONvalue)
+    #print(JSONvalue)
     return(JSONvalue)
   }
 
