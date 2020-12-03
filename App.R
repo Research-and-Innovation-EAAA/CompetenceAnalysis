@@ -215,7 +215,7 @@ ui <- fluidPage(
                                     choices = list("Uge", "Måned", "År")
                         ),
                         textOutput(outputId = "progressionErrorField"),
-                        plotOutput("progressionDiagram", height = 540)
+                        plotOutput("progressionDiagram", height = 620)
                       )
              ),
              tabPanel(title=i18n$t("Ad List"),
@@ -797,7 +797,7 @@ server <- function(input, output, session){
           " limit ",
           input$limitCountCompetences
         )
-        print(csvDataQuery)
+        #print(csvDataQuery)
         csvData$kompetenceListe <- dbGetQuery(con,csvDataQuery)
 
         dbDisconnect(con)
@@ -809,7 +809,7 @@ server <- function(input, output, session){
           csvData$kompetenceListe <- csvData$kompetenceListe[order(csvData$kompetenceListe$amount, decreasing = (input$showCompetencesDescending==FALSE)),]
           
           setProgress(4/5)
-          output$kompetenceDiagram <- renderPlot({
+          output$kompetenceDiagram <- renderPlot(height = (200+18*input$limitCountCompetences), {
             
             par(mar = c(5,18,4,2) + 0.1)
             ylim <- c(0, 1.2*max(csvData$kompetenceListe$amount))
