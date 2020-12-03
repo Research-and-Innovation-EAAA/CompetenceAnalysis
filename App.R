@@ -195,7 +195,14 @@ ui <- fluidPage(
              tabPanel(title=i18n$t("Competence Comparison"),
                       wellPanel(
                         textOutput(outputId = "kompetenceErrorField"),
-                        checkboxInput("matchAllCompetences", "Vis kun søgte kompetencer", TRUE),
+                        fluidRow(
+                          column(6,
+                                 checkboxInput("showSearchedCompetences", "Vis søgte kompetencer", TRUE)
+                          ),
+                          column(6,
+                                 checkboxInput("showOtherCompetences", "Vis andre kompetencer", FALSE)
+                          )
+                        ),
                         plotOutput("kompetenceDiagram", height = 620),
                         downloadButton("downloadKompetenceData", "Download data")
                       )
@@ -297,8 +304,12 @@ server <- function(input, output, session){
     updateDataFields()
   }) 
   
-  observeEvent(input$matchAllCompetences, ignoreInit = TRUE,{
-      updateCurrentTab()
+  observeEvent(input$showSearchedCompetences, ignoreInit = TRUE,{
+    updateCurrentTab()
+  })
+  
+  observeEvent(input$showOtherCompetences, ignoreInit = TRUE,{
+    updateCurrentTab()
   })
   
   observeEvent(input$outputPanel, ignoreInit = TRUE, {
@@ -740,7 +751,7 @@ server <- function(input, output, session){
         stopifnot(is.object(con))
         
         setProgress(1/5)
-        if(input$matchAllCompetences && length(kompetencer$sk) != 0){
+        if((input$showSearchedCompetences!=input$showOtherCompetences) && length(kompetencer$sk) != 0){
           
           matchIndexes <- list()
           categoryMatrix <- as.matrix(fullCategoryData)
@@ -752,8 +763,7 @@ server <- function(input, output, session){
             kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
           }
           
-          
-          q2 <- ' AND ak.kompetence_id IN (select max(komp._id) from kompetence komp where komp._id in ('
+          q2 <- paste0(' AND ak.kompetence_id',ifelse(input$showSearchedCompetences, '',' NOT'),' IN (select max(komp._id) from kompetence komp where komp._id in (')
           for (i in 1:length(kompetenceIds)){
             if (i < length(kompetenceIds)){
               q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
@@ -775,7 +785,7 @@ server <- function(input, output, session){
           q2,
           " GROUP BY ak.kompetence_id ORDER BY amount desc limit 30"
         )
-        #print(csvDataQuery)
+        print(csvDataQuery)
         csvData$kompetenceListe <- dbGetQuery(con,csvDataQuery)
 
         dbDisconnect(con)
@@ -792,7 +802,7 @@ server <- function(input, output, session){
             par(mar = c(5,18,4,2) + 0.1)
             ylim <- c(0, 1.2*max(csvData$kompetenceListe$amount))
             xx <- barplot(csvData$kompetenceListe$amount, xlim = ylim, 
-                    main=paste0("Kompetencer i jobopslag\n", input$regChoice, " fra ", input$dateRange[1], " til ", input$dateRange[2], "."), 
+                    main=paste0(ifelse(input$showSearchedCompetences, ifelse(input$showOtherCompetences, 'Alle','Søgte'),'Andre'), " kompetencer i jobopslag\n", input$regChoice, " fra ", input$dateRange[1], " til ", input$dateRange[2], "."), 
                     names.arg = csvData$kompetenceListe$k_prefferredLabel,
                     las = 2,
                     horiz = TRUE
