@@ -194,15 +194,16 @@ ui <- fluidPage(
            tabsetPanel(id = "outputPanel",
              tabPanel(title=i18n$t("Competence Comparison"),
                       wellPanel(
-                        textOutput(outputId = "kompetenceErrorField"),
                         fluidRow(
                           column(6,
-                                 checkboxInput("showSearchedCompetences", "Vis søgte kompetencer", TRUE)
-                          ),
-                          column(6,
+                                 checkboxInput("showSearchedCompetences", "Vis søgte kompetencer", TRUE),
                                  checkboxInput("showOtherCompetences", "Vis andre kompetencer", FALSE)
+                          ),
+                          column(6, checkboxInput("showCompetencesDescending", i18n$t("Vis aftagende"), TRUE),
+                                           numericInput("limitCountCompetences", NULL, 30, min = 1, max = 100000)
                           )
                         ),
+                        textOutput(outputId = "kompetenceErrorField"),
                         plotOutput("kompetenceDiagram", height = 620),
                         downloadButton("downloadKompetenceData", "Download data")
                       )
@@ -303,6 +304,14 @@ server <- function(input, output, session){
   observeEvent(input$dataFieldSearchField, ignoreInit = TRUE, {
     updateDataFields()
   }) 
+  
+  observeEvent(input$showCompetencesDescending, ignoreInit = TRUE,{
+    updateCurrentTab()
+  })
+  
+  observeEvent(input$limitCountCompetences, ignoreInit = TRUE,{
+    updateCurrentTab()
+  })
   
   observeEvent(input$showSearchedCompetences, ignoreInit = TRUE,{
     updateCurrentTab()
@@ -783,7 +792,10 @@ server <- function(input, output, session){
           getSearchAdResultTableName(),
           " c ON ak.annonce_id=c.annonce_id ",
           q2,
-          " GROUP BY ak.kompetence_id ORDER BY amount desc limit 30"
+          " GROUP BY ak.kompetence_id ORDER BY amount ",
+          ifelse(input$showCompetencesDescending==TRUE, "desc", "asc"), 
+          " limit ",
+          input$limitCountCompetences
         )
         print(csvDataQuery)
         csvData$kompetenceListe <- dbGetQuery(con,csvDataQuery)
@@ -794,7 +806,7 @@ server <- function(input, output, session){
         if (dim(csvData$kompetenceListe)[1] != 0) {
           # If i order the table in the correct order in the SQL query the 'Limit 30' option cuts off the biggest instead of the smallest.
           # Which is why the table must be ordered after the query.
-          csvData$kompetenceListe <- csvData$kompetenceListe[order(csvData$kompetenceListe$amount, decreasing = FALSE),]
+          csvData$kompetenceListe <- csvData$kompetenceListe[order(csvData$kompetenceListe$amount, decreasing = (input$showCompetencesDescending==FALSE)),]
           
           setProgress(4/5)
           output$kompetenceDiagram <- renderPlot({
