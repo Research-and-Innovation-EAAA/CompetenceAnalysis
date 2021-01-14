@@ -772,13 +772,13 @@ server <- function(input, output, session){
             kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
           }
           
-          q2 <- paste0(' AND ak.kompetence_id',ifelse(input$showSearchedCompetences, '',' NOT'),' IN (select max(komp._id) from kompetence komp where komp._id in (')
+          q2 <- paste0(' WHERE k._id',ifelse(input$showSearchedCompetences, '',' NOT'),' IN (')
           for (i in 1:length(kompetenceIds)){
             if (i < length(kompetenceIds)){
               q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
             }
             else{
-              q2 <- paste0(q2, kompetenceIds[i],') group by komp.prefferredLabel) ')
+              q2 <- paste0(q2, kompetenceIds[i],') ')
             }
           }
         } else {
@@ -788,16 +788,16 @@ server <- function(input, output, session){
         setProgress(2/5)
         
         csvDataQuery <- paste0(
-          "select distinct ak.k_prefferredLabel, count(ak.kompetence_id) as amount from annonce_kompetence ak JOIN ",
+          "SELECT k.prefferredLabel k_prefferredLabel, count(sak.annonce_id) as amount FROM kompetence k LEFT JOIN (SELECT ak.annonce_id annonce_id, ak.kompetence_id kompetence_id FROM annonce_kompetence ak JOIN ",
           getSearchAdResultTableName(),
-          " c ON ak.annonce_id=c.annonce_id ",
+          " c ON ak.annonce_id=c.annonce_id) sak ON sak.kompetence_id=k._id ",
           q2,
-          " GROUP BY ak.kompetence_id ORDER BY amount ",
+          " GROUP BY k._id ORDER BY amount ",
           ifelse(input$showCompetencesDescending==TRUE, "desc", "asc"), 
           " limit ",
           input$limitCountCompetences
         )
-        #print(csvDataQuery)
+        # print(csvDataQuery)
         csvData$kompetenceListe <- dbGetQuery(con,csvDataQuery)
 
         dbDisconnect(con)
