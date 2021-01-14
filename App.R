@@ -248,8 +248,8 @@ ui <- fluidPage(
 server <- function(input, output, session){
   kompetencer <- reactiveValues(ak = NULL, sk = list(), fk = list())
   datafields <- reactiveValues(titles = list(), selectedDataFields = list(), availableDataFields = list())
-  csvData <- reactiveValues(annonceListe = list(), kompetenceListe = list())
-  
+  csvData <- reactiveValues(annonceListe = list(), kompetenceListe = list(), allQuery = NULL)
+
   current <- reactiveValues(tab = 1)
   tabUpdates <- reactiveValues(kompetence = FALSE, progression = FALSE, annonce = FALSE)
   lastShinyTree <- reactiveValues(tree = list())
@@ -281,7 +281,11 @@ server <- function(input, output, session){
   output$downloadKompetenceData <- downloadHandler(
     filename = 'kompetence_data.csv',
     content = function(file){
-      write.csv(csvData$kompetenceListe, file, row.names = FALSE)
+      con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, port = credentials.port , bigint = c("numeric"))
+      stopifnot(is.object(con))
+      kompetenceAlleListe <- dbGetQuery(con,csvData$allQuery)
+      dbDisconnect(con)
+      write.csv(kompetenceAlleListe, file, row.names = FALSE)
     }
   )
   
@@ -787,13 +791,16 @@ server <- function(input, output, session){
 
         setProgress(2/5)
         
-        csvDataQuery <- paste0(
+        csvData$allQuery <- paste0(
           "SELECT k.prefferredLabel k_prefferredLabel, count(sak.annonce_id) as amount FROM kompetence k LEFT JOIN (SELECT ak.annonce_id annonce_id, ak.kompetence_id kompetence_id FROM annonce_kompetence ak JOIN ",
           getSearchAdResultTableName(),
           " c ON ak.annonce_id=c.annonce_id) sak ON sak.kompetence_id=k._id ",
           q2,
           " GROUP BY k._id ORDER BY amount ",
-          ifelse(input$showCompetencesDescending==TRUE, "desc", "asc"), 
+          ifelse(input$showCompetencesDescending==TRUE, "desc", "asc")
+        )
+        csvDataQuery <- paste0(
+          csvData$allQuery, 
           " limit ",
           input$limitCountCompetences
         )
