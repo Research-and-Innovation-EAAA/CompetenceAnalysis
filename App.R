@@ -7,7 +7,7 @@ library(ggplot2)
 library(shinyTree)
 library(devtools)
 library(jsonlite)
-#library(stringr)
+library(stringr)
 
 source(file = 'credentials.R')
 i18n <- Translator$new(translation_json_path = "translation.json")
