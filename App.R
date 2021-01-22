@@ -7,6 +7,7 @@ library(ggplot2)
 library(shinyTree)
 library(devtools)
 library(jsonlite)
+#library(stringr)
 
 source(file = 'credentials.R')
 i18n <- Translator$new(translation_json_path = "translation.json")
@@ -265,10 +266,25 @@ server <- function(input, output, session){
     setProgress(2/3)
     
     treeString <- dbGetQuery(con, 'select shinyTreeJSON from global where _id = 1')[1,1]
-    dbDisconnect(con)
-
     output$tree <- renderEmptyTree()
     updateTree(session,"tree", treeString)
+    
+    # generate list of all configured competence nodes
+    allTreeNodes <- fromJSON(treeString, flatten = TRUE)
+    allTreeNodes <- rapply(allTreeNodes, function(x) x, classes = "character", how = "unlist")
+    allTreeNodes <- unname(allTreeNodes)
+    qq <-
+      paste0(
+        'select k._id from kompetence k where k.prefferredLabel in (',
+        paste(shQuote(allTreeNodes), collapse = ","),
+        ')'
+      ) 
+    #print (qq)
+    subData <- dbGetQuery(con, qq)
+    allTreeNodes <- subData[, 1]
+  
+    dbDisconnect(con)
+    
     setProgress(1)
   })
 
@@ -672,21 +688,19 @@ server <- function(input, output, session){
     }
   }
   
+  loadChildNodes <- function(parentNodes) {
+    
+  }
+  
+  
+  
   treeUpdateEffects <- function(){
     selectedList <- get_selected(input$tree)
+    unselectedList <- get_selected(input$tree)
     if (length(selectedList) > 0){
       withProgress(message = "Opdaterer tilgængelig list", expr = {
         setProgress(0)
-        
-        q1 <- 'select prefferredLabel from kompetence where grp = '
-        q2 <- ''
-        for (i in 1:length(selectedList)){
-          q2 <- paste0(q2, '"', selectedList[i], '"')
-          if (i != length(selectedList)){
-            q2 <- paste0(q2, ' or grp = ')
-          }
-        }
-        
+
         searchList <- list()
         
         for (i in 1:length(selectedList)){
@@ -694,65 +708,67 @@ server <- function(input, output, session){
         }
         setProgress(1/6)
         
-        i <- length(searchList)
-        while(i > 0){
-          if (!any(as.vector(fullCategoryData[,1]) == searchList[[i]])){
-            searchList[[i]] <- NULL
-          }
-          i <- i - 1
-        }
-        
         con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
         setProgress(2/6)
-        qq <- paste0(q1, q2)
-        finalList <- as.vector(as.matrix(dbGetQuery(con, qq)))
+
         
         setProgress(3/6)
+        qq <-
+          paste0(
+            'select k._id from kompetence k where k.prefferredLabel in (',
+            paste(shQuote(searchList), collapse = ","),
+            ')'
+          )
+        #print (qq)
+        subData <- dbGetQuery(con, qq)
+        searchList <- subData[, 1]
+        finalList <- searchList
+        oldresultcount <- 0
+        resultcount <- length(finalList)
         done <- FALSE
-        while (!done){
-          subList = c()
-          for (superKompetence in searchList){
-            subData <- dbGetQuery(con, paste0('select k.prefferredLabel from kompetence k, kompetence_kategorisering kk where k.conceptUri = kk.subkompetence and kk.superkompetence = (select distinct k.conceptUri from kompetence k, kompetence_kategorisering kk where k.prefferredLabel = "', superKompetence, '" and k.conceptUri = kk.superkompetence)'))
-            subList <- c(subList,subData[,1])
-          }
-          finalList <- c(finalList, searchList)
-          searchList <- subList
-          if (length(searchList) == 0){
-            done <- TRUE
-          }
-          else
-          {
-            searchList <- setdiff(searchList, finalList)
-          }
-          
+        while (oldresultcount < resultcount) {
+          superkompetencelist <- paste(if (oldresultcount==0) searchList else setdiff(searchList, allTreeNodes), collapse = ", ")
+          qq <-
+            paste0(
+              'select k_sub._id from kompetence k_sub join kompetence_kategorisering kk ON k_sub.conceptUri = kk.subkompetence and kk.superkompetence in (select k_super.conceptUri from kompetence k_super where k_super._id in (',
+              superkompetencelist,
+              '))'
+            )
+          #print (qq)
+          subData <- dbGetQuery(con, qq)
+          searchList <- subData[, 1]
+          finalList <- unique(c(finalList, searchList))
+          oldresultcount <- resultcount
+          resultcount <- length(finalList)
+          #print (resultcount) 
         }
-        dbDisconnect(con)
-        
-        kompetencer$ak <- c()
+      
         
         setProgress(4/6)
-        for (kompetence in finalList){
-          if (!any(kompetencer$sk == kompetence)){
-            kompetencer$ak <- c(kompetencer$ak, kompetence)
-          }
-        }
-        #kompetencer$ak <- sort.list(kompetencer$ak, decreasing = FALSE)
-        setProgress(5/6)
-        updateSelectInput(session,
-                          inputId = "availableCategories", 
-                          choices = kompetencer$ak
-        )
+        qq <-
+          paste0(
+            'select k.prefferredLabel from kompetence k where k._id in (',
+            paste(finalList, collapse = ","),
+            ')'
+          ) 
+        #print (qq)
+        subData <- dbGetQuery(con, qq)
+        kompetencer$ak <- str_sort(subData[, 1])
+
+        dbDisconnect(con)
         setProgress(1)
       })
     }
     else{
-      updateSelectInput(session,
-                        inputId = "availableCategories", 
-                        choices = list()
-      )
+      kompetencer$ak <- c()
     }
+    
+    updateSelectInput(session,
+                      inputId = "availableCategories", 
+                      choices = list()
+    )
     lastShinyTree$tree <- selectedList
   }
   
