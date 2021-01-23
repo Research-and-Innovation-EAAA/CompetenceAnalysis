@@ -747,15 +747,21 @@ server <- function(input, output, session){
       
         
         setProgress(4/6)
-        qq <-
-          paste0(
-            'select k.prefferredLabel from kompetence k where k._id in (',
-            paste(finalList, collapse = ","),
-            ')'
-          ) 
-        #print (qq)
-        subData <- dbGetQuery(con, qq)
-        kompetencer$ak <- str_sort(subData[, 1])
+        if (length(finalList)>0) {
+          qq <-
+            paste0(
+              'select k.prefferredLabel from kompetence k where k._id in (',
+              paste(finalList, collapse = ","),
+              ')'
+            ) 
+          print (qq)
+          subData <- dbGetQuery(con, qq)
+          kompetencer$ak <- str_sort(subData[, 1])
+        }
+        else
+        {
+          kompetencer$ak <- c()
+        }
 
         dbDisconnect(con)
         setProgress(1)
