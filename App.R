@@ -49,7 +49,7 @@ ui <- fluidPage(
                column(4,
                       selectInput(inputId = "availableCategories",
                                   label = i18n$t("Available   Categories"),
-                                  size = 20,
+                                  size = 10,
                                   selectize = FALSE,
                                   multiple = TRUE,
                                   choices = list(),
@@ -69,7 +69,7 @@ ui <- fluidPage(
                column(4, 
                       selectInput(inputId = "selectedCategories",
                                   label = i18n$t("Selected Categories"),
-                                  size = 20,
+                                  size = 10,
                                   selectize = FALSE,
                                   multiple = TRUE,
                                   choices = list(),
@@ -83,6 +83,12 @@ ui <- fluidPage(
            wellPanel(
              fluidRow(
                column(6,
+                      dateRangeInput('dateRange',
+                                     label = i18n$t("Period"),
+                                     start = Sys.Date()-30, end = Sys.Date()
+                      )
+               ),
+               column(6,
                       selectInput(inputId = "regChoice",
                                   label = i18n$t("Region"), 
                                   choices = list("Alle regioner", "storkoebenhavn", "nordsjaelland", "region-sjaelland", "fyn", "region-nordjylland", "region-midtjylland", "sydjylland", "bornholm", "skaane", "groenland", "faeroeerne", "udlandet"),
@@ -90,45 +96,57 @@ ui <- fluidPage(
                                   width = "400px"
                       )
                ),
-               column(6,
-                      dateRangeInput('dateRange',
-                                     label = i18n$t("Period"),
-                                     start = Sys.Date()-30, end = Sys.Date()
-                      )
+               column(9, textInput(inputId = "adIdSearchField", label = i18n$t("Ad id"),  placeholder = i18n$t("Enter one or more comma separated ad ids"))
                ),
-               column(9, textInput(inputId = "titleSearchField", label = i18n$t("Job Title"),  placeholder = i18n$t("Enter one or more comma separated job titles"))
-               ),
-               column(3, align = "center", actionButton(inputId = "addTitle", label = i18n$t("Add Title \u02C3"), style = "margin-top: 25px", width = 100)
+               column(3, align = "center", actionButton(inputId = "addAdId", label = i18n$t("Add ad id \u02C3"), style = "margin-top: 25px", width = 150)
                ),
                column(9, 
-                      selectInput(inputId = "selectedTitleSearchTerms",
-                                  label = i18n$t("Selected Job Title"),
-                                  size = 20,
+                      selectInput(inputId = "selectedAdIdSearchTerms",
+                                  label = i18n$t("Selected Ad ids"),
+                                  size = 10,
                                   selectize = FALSE,
                                   multiple = TRUE,
                                   choices = list(),
                                   width = "100%"
                       )
                ),
-               column(3,align = "center", style = "margin-top: 125px;",
+               column(3,align = "center", style = "margin-top: 20px;",
+                      actionButton("removeAdId", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
+                      actionButton("removeAllAdIds", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
+               ),
+               column(9, textInput(inputId = "titleSearchField", label = i18n$t("Job Title"),  placeholder = i18n$t("Enter one or more comma separated job titles"))
+               ),
+               column(3, align = "center", actionButton(inputId = "addTitle", label = i18n$t("Add Title \u02C3"), style = "margin-top: 25px", width = 150)
+               ),
+               column(9, 
+                      selectInput(inputId = "selectedTitleSearchTerms",
+                                  label = i18n$t("Selected Job Title"),
+                                  size = 10,
+                                  selectize = FALSE,
+                                  multiple = TRUE,
+                                  choices = list(),
+                                  width = "100%"
+                      )
+               ),
+               column(3,align = "center", style = "margin-top: 20px;",
                       actionButton("removeTitle", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
                       actionButton("removeAllTitles", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
                ),
                column(9, textInput(inputId = "TextSearchField", label = i18n$t("Job Text"),  placeholder = i18n$t("Enter one or more comma separated job texts"))
                ),
-               column(3, align = "center", actionButton(inputId = "addText", label = i18n$t("Add Text \u02C3"), style = "margin-top: 25px", width = 100)
+               column(3, align = "center", actionButton(inputId = "addText", label = i18n$t("Add Text \u02C3"), style = "margin-top: 25px", width = 150)
                ),
                column(9, 
                       selectInput(inputId = "selectedTextSearchTerms",
                                   label = i18n$t("Selected Job Text"),
-                                  size = 20,
+                                  size = 10,
                                   selectize = FALSE,
                                   multiple = TRUE,
                                   choices = list(),
                                   width = "100%"
                       )
                ),
-               column(3,align = "center", style = "margin-top: 125px;",
+               column(3,align = "center", style = "margin-top: 20px;",
                       actionButton("removeText", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
                       actionButton("removeAllTexts", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
                )
@@ -158,7 +176,7 @@ ui <- fluidPage(
                         column(4,
                                selectInput(inputId = "availableDataFields",
                                            label = i18n$t("Available datafields:"),
-                                           size = 20,
+                                           size = 10,
                                            selectize = FALSE,
                                            multiple = TRUE,
                                            choices = list(),
@@ -173,7 +191,7 @@ ui <- fluidPage(
                         column(4, 
                                selectInput(inputId = "selectedDataFields",
                                            label = i18n$t("Selected"),
-                                           size = 20,
+                                           size = 10,
                                            selectize = FALSE,
                                            multiple = TRUE,
                                            choices = list(),
@@ -226,7 +244,7 @@ ui <- fluidPage(
                           selectInput(inputId = "annonceList",
                                       label = i18n$t("Ad List"),
                                       selectize = FALSE,
-                                      size = 20,
+                                      size = 10,
                                       choices = list(),
                                       width = "100%"
                           ),
@@ -505,6 +523,19 @@ server <- function(input, output, session){
     updateDataFields()
     updateCurrentTab()
   })
+  observeEvent(input$addAdId,{
+    if(input$adIdSearchField != ""){
+      split <- strsplit(input$adIdSearchField, split = ",", fixed = TRUE)[[1]]
+      for(element in split){
+        elementValue = as.integer(element)
+        if (!is.na(elementValue)) {
+          datafields$adIds <- c(datafields$adIds,elementValue)
+        }
+      }
+      updateSelectInput(session,inputId = "selectedAdIdSearchTerms",choices = datafields$adIds)
+      updateCurrentTab()
+    }
+  })
   observeEvent(input$addTitle,{
     if(input$titleSearchField != ""){
       split <- strsplit(input$titleSearchField, split = ",", fixed = TRUE)[[1]]
@@ -524,6 +555,19 @@ server <- function(input, output, session){
       updateSelectInput(session,inputId = "selectedTextSearchTerms",choices = datafields$texts)
       updateCurrentTab()
     }
+  })
+  
+  observeEvent(input$removeAdId,{
+    if (!is.null(input$selectedAdIdSearchTerms)){
+      datafields$adIds <- datafields$adIds[!datafields$adIds %in% input$selectedAdIdSearchTerms]
+      updateSelectInput(session,inputId = "selectedAdIdSearchTerms", choices = datafields$adIds)
+      updateCurrentTab()
+    }
+  })
+  observeEvent(input$removeAllAdIds,{
+    datafields$adIds <- datafields$adIds[!datafields$adIds %in% datafields$adIds]
+    updateSelectInput(session,inputId = "selectedAdIdSearchTerms", choices = datafields$adIds)
+    updateCurrentTab()
   })
   
   observeEvent(input$removeTitle,{
@@ -754,7 +798,7 @@ server <- function(input, output, session){
               paste(finalList, collapse = ","),
               ')'
             ) 
-          print (qq)
+          #print (qq)
           subData <- dbGetQuery(con, qq)
           kompetencer$ak <- str_sort(subData[, 1])
         }
@@ -872,6 +916,9 @@ server <- function(input, output, session){
     #     "fromTime": "2019-09-30",
     #     "toTime": "2019-11-30"
     #   },
+    #   "idList": [
+    #       11
+    #   ],
     #   "region": {
     #     "nameList": [
     #       "region-midtjylland"
@@ -914,6 +961,18 @@ server <- function(input, output, session){
     periodType <- setClass("Period", slots = c(fromTime="Date", toTime="Date"))
     periodObject = periodType(fromTime = input$dateRange[1], toTime = input$dateRange[2])
     periodParam <- paste0(periodParam, toJSON(unclass(periodObject), force=TRUE, auto_unbox=TRUE))
+
+    # Build ad id criteria
+    adIdParam <- ""
+    if(length(datafields$adIds)>0) {
+        adIdParam <- paste0(', "idList":[', paste0(datafields$adIds, collapse=','), "]")
+    }
+
+    # Build region criteria
+    regionParam <- ""
+    if(input$regChoice != "Alle regioner") {
+      regionParam <- paste0(', "region": {"nameList":["', input$regChoice,'"]}')
+    }
     
     # Build region criteria
     regionParam <- ""
@@ -979,8 +1038,8 @@ server <- function(input, output, session){
       metadataParam <- ""
     }
     
-    JSONvalue = paste0("{", periodParam, regionParam, textcontentParam, kompetenceParam, metadataParam, "}") 
-    #print(JSONvalue)
+    JSONvalue = paste0("{", periodParam, adIdParam, regionParam, textcontentParam, kompetenceParam, metadataParam, "}") 
+    print(JSONvalue)
     return(JSONvalue)
   }
 
