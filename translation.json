@@ -31,6 +31,14 @@
         "da": "Tilg\u00E6ngelige"
       },
       {
+        "en": "Ad id",
+        "da": "Annonce id"
+      },
+      {
+        "en": "Enter one or more comma separated ad ids",
+        "da": "Indtast én eller flere kommaseparerede annonce id'er"
+      },
+      {
         "en": "Enter one or more comma separated job titles",
         "da": "Indtast én eller flere kommaseparerede jobtitler"
       },
@@ -75,12 +83,20 @@
         "da": "Jobtekst"
       },
       {
+        "en": "Add ad id \u02C3",
+        "da": "Tilf\u00F8j \u02C3"
+      },
+      {
         "en": "Add Title \u02C3",
         "da": "Tilf\u00F8j \u02C3"
       },
       {
         "en": "Add Text \u02C3",
         "da": "Tilf\u00F8j \u02C3"
+      },
+      {
+        "en": "Selected Ad ids",
+        "da": "Valgte annonce id'er"
       },
       {
         "en": "Selected Job Title",
