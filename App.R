@@ -218,7 +218,7 @@ ui <- fluidPage(
                                  checkboxInput("showSearchedCompetences", "Vis søgte kompetencer", TRUE),
                                  checkboxInput("showOtherCompetences", "Vis andre kompetencer", FALSE)
                           ),
-                          column(6, checkboxInput("showCompetencesDescending", i18n$t("Vis aftagende"), TRUE),
+                          column(6, checkboxInput("showCompetencesDescending", i18n$t("Show descending"), TRUE),
                                            numericInput("limitCountCompetences", NULL, 30, min = 1, max = 100000)
                           )
                         ),
@@ -280,7 +280,7 @@ server <- function(input, output, session){
     fullCategoryData <- dbGetQuery(con, 'select prefferredLabel, _id, grp from kompetence order by prefferredLabel asc')
     setProgress(1/3)
     annonceCount <- dbGetQuery(con, 'select count(*) from annonce')[1,1]
-    output$adCountField <- renderText(paste0(annonceCount," ",i18n$t("job ads")))
+    output$adCountField <- renderText(paste0(format(annonceCount, big.mark=".", decimal.mark=",")," ",i18n$t("job ads")))
     setProgress(2/3)
     
     treeString <- dbGetQuery(con, 'select shinyTreeJSON from global where _id = 1')[1,1]

@@ -169,6 +169,10 @@
       {
         "en": "Minimum occurences",
         "da": "Minimum forekomster"
+      },
+      {
+        "en": "Show descending",
+        "da": "Vis aftagende"
       }
     ]
 }
