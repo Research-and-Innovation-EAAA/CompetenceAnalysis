@@ -234,7 +234,8 @@ ui <- fluidPage(
                                     choices = list("Uge", "Måned", "År")
                         ),
                         textOutput(outputId = "progressionErrorField"),
-                        plotOutput("progressionDiagram", height = 620)
+                        plotOutput("progressionDiagram", height = 620),
+                        downloadButton("downloadProgressionData", "Download data")
                       )
              ),
              tabPanel(title=i18n$t("Ad List"),
@@ -320,6 +321,16 @@ server <- function(input, output, session){
       kompetenceAlleListe <- dbGetQuery(con,csvData$allQuery)
       dbDisconnect(con)
       write.csv(kompetenceAlleListe, file, row.names = FALSE)
+    }
+  )
+  output$downloadProgressionData <- downloadHandler(
+    filename = 'progression_data.csv',
+    content = function(file){
+      con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, port = credentials.port , bigint = c("numeric"))
+      stopifnot(is.object(con))
+      progressionListe <- dbGetQuery(con,csvData$progressionQuery)
+      dbDisconnect(con)
+      write.csv(progressionListe, file, row.names = FALSE)
     }
   )
   
@@ -1103,7 +1114,7 @@ server <- function(input, output, session){
         con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
-        qq <-
+        csvData$progressionQuery <-
           paste0(
             "SELECT ",
             periodQuery,
@@ -1113,7 +1124,7 @@ server <- function(input, output, session){
           )
         #print(qq)
         progressionData <- data.frame()
-        formattedData <- rbind(progressionData, dbGetQuery(con, qq))
+        formattedData <- rbind(progressionData, dbGetQuery(con, csvData$progressionQuery))
 
         dbDisconnect(con)
         
