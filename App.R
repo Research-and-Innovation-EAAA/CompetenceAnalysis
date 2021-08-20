@@ -256,7 +256,8 @@ ui <- fluidPage(
                           tags$h5(style="font-weight:bold", "Annoncetekst:"),
                           textOutput(outputId = "annonceText"),
                           tags$style(type="text/css", "#annonceDataFields td:first-child {font-weight:bold;}"), #make row names of table bold.
-                          downloadButton("downloadAnnonceliste", "Download data")
+                          downloadButton("downloadAnnonceliste", "Download data"),
+                          downloadButton("downloadAnnonceNumre", i18n$t("Download ID list"))
                         )
                       )
              )
@@ -306,14 +307,22 @@ server <- function(input, output, session){
     
     setProgress(1)
   })
-
+  
   output$downloadAnnonceliste <- downloadHandler(
     filename = 'annonce_liste.csv',
     content = function(file){
       write.csv(csvData$annonceListe, file, row.names = FALSE)
     }
   )
-  output$downloadKompetenceData <- downloadHandler(
+  
+  output$downloadAnnonceNumre <- downloadHandler(
+    filename = 'annonce_numre.csv',
+    content = function(file){
+      write.table(t(csvData$annonceNumre), file, row.names=F, col.names=F, sep=",")
+    }
+  )
+
+    output$downloadKompetenceData <- downloadHandler(
     filename = 'kompetence_data.csv',
     content = function(file){
       con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, port = credentials.port , bigint = c("numeric"))
@@ -1191,6 +1200,8 @@ server <- function(input, output, session){
         setProgress(0)
         con <- dbConnect(RMariaDB::MariaDB(), port = credentials.port, host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
+        qq <- paste0("SELECT a.annonce_id FROM ", getSearchAdResultTableName(), " a ORDER BY a.annonce_id DESC")
+        csvData$annonceNumre <- dbGetQuery(con, qq)
         qq <- paste0("SELECT a._id, a.title FROM annonce a JOIN ", getSearchAdResultTableName(), " c ON a._id=c.annonce_id ORDER BY a._id DESC")
         csvData$annonceListe <- dbGetQuery(con, qq)
         dbDisconnect(con)
