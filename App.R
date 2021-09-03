@@ -8,6 +8,7 @@ library(shinyTree)
 library(devtools)
 library(jsonlite)
 library(stringr)
+library(wordcloud2)
 
 source(file = 'credentials.R')
 i18n <- Translator$new(translation_json_path = "translation.json")
@@ -260,6 +261,21 @@ ui <- fluidPage(
                           downloadButton("downloadAnnonceNumre", i18n$t("Download ID list"))
                         )
                       )
+             ),
+             tabPanel(title=i18n$t("Match"),
+                      wellPanel(
+                        tabsetPanel(id = "matchPanel",
+                                    tabPanel(i18n$t("Searched and found"),
+                                             wordcloud2Output("my_wcMiddle", width = "100%")
+                                    ),
+                                    tabPanel(i18n$t("Not searched but found"),
+                                             wordcloud2Output("my_wcRight", width = "100%")
+                                    ),
+                                    tabPanel(i18n$t("Searched but not found"),
+                                             wordcloud2Output("my_wcLeft", width = "100%")
+                                    )
+                        )
+                      )       
              )
            )
     )
@@ -272,7 +288,7 @@ server <- function(input, output, session){
   csvData <- reactiveValues(annonceListe = list(), kompetenceListe = list(), allQuery = NULL)
 
   current <- reactiveValues(tab = 1)
-  tabUpdates <- reactiveValues(kompetence = FALSE, progression = FALSE, annonce = FALSE)
+  tabUpdates <- reactiveValues(kompetence = FALSE, progression = FALSE, annonce = FALSE, wordcloud = FALSE)
   lastShinyTree <- reactiveValues(tree = list())
   
   con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, port = credentials.port , bigint = c("numeric"))
@@ -322,12 +338,17 @@ server <- function(input, output, session){
     }
   )
 
-    output$downloadKompetenceData <- downloadHandler(
+  output$downloadKompetenceData <- downloadHandler(
     filename = 'kompetence_data.csv',
     content = function(file){
       con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, db = credentials.db, port = credentials.port , bigint = c("numeric"))
       stopifnot(is.object(con))
-      kompetenceAlleListe <- dbGetQuery(con,csvData$allQuery)
+      allCompetenceQuery(
+        includeSearchedCompetences=TRUE, 
+        includeOtherCompetences=TRUE, 
+        returnCompetencesDescending=TRUE, 
+        limit=0)
+      kompetenceAlleListe <- dbGetQuery(con,allCompetenceQuery)
       dbDisconnect(con)
       write.csv(kompetenceAlleListe, file, row.names = FALSE)
     }
@@ -399,6 +420,13 @@ server <- function(input, output, session){
       if (tabUpdates$annonce){
         tabUpdates$annonce <- FALSE
         updateAnnonceList()
+      }
+    }
+    else if (input$outputPanel == i18n$t("Match")){
+      current$tab <- 4
+      if (tabUpdates$wordcloud){
+        tabUpdates$wordcloud <- FALSE
+        updateWordcloudDiagram()
       }
     }
   })
@@ -710,14 +738,23 @@ server <- function(input, output, session){
       updateKompetenceDiagram()
       tabUpdates$progression <- TRUE
       tabUpdates$annonce <- TRUE
+      tabUpdates$wordcloud <- TRUE
     }
     else if (current$tab == 2){
       updateProgressionDiagram()
       tabUpdates$kompetence <- TRUE
       tabUpdates$annonce <- TRUE
+      tabUpdates$wordcloud <- TRUE
     }
     else if (current$tab == 3){
       updateAnnonceList()
+      tabUpdates$kompetence <- TRUE
+      tabUpdates$progression <- TRUE
+      tabUpdates$wordcloud <- TRUE
+    }
+    else if (current$tab == 4){
+      updateWordcloudDiagram()
+      tabUpdates$annonce <- TRUE
       tabUpdates$kompetence <- TRUE
       tabUpdates$progression <- TRUE
     }
@@ -755,8 +792,6 @@ server <- function(input, output, session){
   loadChildNodes <- function(parentNodes) {
     
   }
-  
-  
   
   treeUpdateEffects <- function(){
     selectedList <- get_selected(input$tree)
@@ -842,57 +877,136 @@ server <- function(input, output, session){
     lastShinyTree$tree <- selectedList
   }
   
-  updateKompetenceDiagram <- function(){
+  buildCompetenceQuery <- function (
+    includeSearchedCompetences = TRUE, 
+    includeOtherCompetences  = TRUE, 
+    returnCompetencesDescending = TRUE, 
+    limit = 0) 
+  {
+    if((includeSearchedCompetences!=includeOtherCompetences) && length(kompetencer$sk) != 0){
+      
+      matchIndexes <- list()
+      categoryMatrix <- as.matrix(fullCategoryData)
+      for (kompetence in kompetencer$sk){
+        matchIndexes <- c(matchIndexes, which(categoryMatrix[,1] == kompetence))
+      }
+      kompetenceIds <- list()
+      for (index in matchIndexes){
+        kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
+      }
+      
+      q2 <- paste0(' WHERE k._id',ifelse(includeSearchedCompetences, '',' NOT'),' IN (')
+      for (i in 1:length(kompetenceIds)){
+        if (i < length(kompetenceIds)){
+          q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
+        }
+        else{
+          q2 <- paste0(q2, kompetenceIds[i],') ')
+        }
+      }
+    } else {
+      q2 <- '';
+    }
+    
+    csvDataQuery <- paste0(
+      "SELECT k.prefferredLabel k_prefferredLabel, count(sak.annonce_id) as amount FROM kompetence k LEFT JOIN (SELECT ak.annonce_id annonce_id, ak.kompetence_id kompetence_id FROM annonce_kompetence ak JOIN ",
+      getSearchAdResultTableName(),
+      " c ON ak.annonce_id=c.annonce_id) sak ON sak.kompetence_id=k._id ",
+      q2,
+      " GROUP BY k._id ORDER BY amount ",
+      ifelse(isTRUE(returnCompetencesDescending), ' DESC ', ' ASC '),
+      ifelse(is.numeric(limit) & length(limit)>0 & limit>0, paste0(' LIMIT ', limit, ' '), ' ')
+    )
+    
+    return(csvDataQuery)
+  }
+  
+  updateWordcloudDiagram <- function(){
     #if(length(kompetencer$sk) != 0){
+    withProgress(message = "Opdaterer Diagram", expr = {
+      setProgress(0)
+      con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
+      stopifnot(is.object(con))
+      
+      setProgress(1/5)
+      
+      csvDataQuery <- buildCompetenceQuery(
+        includeSearchedCompetences = TRUE, 
+        includeOtherCompetences = FALSE, 
+        returnCompetencesDescending = FALSE, 
+        40) 
+      #print(csvDataQuery)
+      csvData$searchedButNotFoundCompetences <- dbGetQuery(con,csvDataQuery)
+      csvData$searchedButNotFoundCompetences <- 
+        csvData$searchedButNotFoundCompetences %>% rename (
+          word = k_prefferredLabel,
+          freq = amount
+        )
+      maxfreq = max(csvData$searchedButNotFoundCompetences$freq)
+      csvData$searchedButNotFoundCompetences <- csvData$searchedButNotFoundCompetences %>% 
+        mutate(freq = maxfreq-freq+1)
+      
+      setProgress(2/5)        
+
+      csvDataQuery <- buildCompetenceQuery(
+        includeSearchedCompetences = TRUE, 
+        includeOtherCompetences = FALSE, 
+        returnCompetencesDescending = TRUE, 
+        40) 
+       #print(csvDataQuery)
+      csvData$searchedAndFoundCompetences <- dbGetQuery(con,csvDataQuery)
+      csvData$searchedAndFoundCompetences <- 
+        csvData$searchedAndFoundCompetences %>% rename (
+          word = k_prefferredLabel,
+          freq = amount
+        )
+      
+      setProgress(3/5)
+      
+      csvDataQuery <- buildCompetenceQuery(
+        includeSearchedCompetences = FALSE, 
+        includeOtherCompetences = TRUE, 
+        returnCompetencesDescending = TRUE, 
+        40) 
+       #print(csvDataQuery)
+      csvData$notSearchedButFoundCompetences <- dbGetQuery(con,csvDataQuery)
+      csvData$notSearchedButFoundCompetences <- 
+        csvData$notSearchedButFoundCompetences %>% rename (
+          word = k_prefferredLabel,
+          freq = amount
+        )
+      
+      setProgress(4/5)
+      
+      dbDisconnect(con)
+      
+      setProgress(5/5)
+      
+      output$my_wcLeft  = renderWordcloud2(wordcloud2(data = csvData$searchedButNotFoundCompetences, size = 0.4,color = "red", shape="circle"))
+      output$my_wcMiddle  = renderWordcloud2(wordcloud2(data = csvData$searchedAndFoundCompetences, size = 0.4,color = "green", shape="circle"))
+      output$my_wcRight  = renderWordcloud2(wordcloud2(data = csvData$notSearchedButFoundCompetences, size = 0.4,color = "blue", shape="circle"))
+    
+    })
+  }
+  
+  
+  updateKompetenceDiagram <- function(){
+      #if(length(kompetencer$sk) != 0){
       withProgress(message = "Opdaterer Diagram", expr = {
         setProgress(0)
         con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
         stopifnot(is.object(con))
         
         setProgress(1/5)
-        if((input$showSearchedCompetences!=input$showOtherCompetences) && length(kompetencer$sk) != 0){
-          
-          matchIndexes <- list()
-          categoryMatrix <- as.matrix(fullCategoryData)
-          for (kompetence in kompetencer$sk){
-            matchIndexes <- c(matchIndexes, which(categoryMatrix[,1] == kompetence))
-          }
-          kompetenceIds <- list()
-          for (index in matchIndexes){
-            kompetenceIds <- c(kompetenceIds, categoryMatrix[index,2])
-          }
-          
-          q2 <- paste0(' WHERE k._id',ifelse(input$showSearchedCompetences, '',' NOT'),' IN (')
-          for (i in 1:length(kompetenceIds)){
-            if (i < length(kompetenceIds)){
-              q2 <- paste0(q2, (paste0(kompetenceIds[i], ', ')))
-            }
-            else{
-              q2 <- paste0(q2, kompetenceIds[i],') ')
-            }
-          }
-        } else {
-          q2 <- '';
-        }
-
-        setProgress(2/5)
-        
-        csvData$allQuery <- paste0(
-          "SELECT k.prefferredLabel k_prefferredLabel, count(sak.annonce_id) as amount FROM kompetence k LEFT JOIN (SELECT ak.annonce_id annonce_id, ak.kompetence_id kompetence_id FROM annonce_kompetence ak JOIN ",
-          getSearchAdResultTableName(),
-          " c ON ak.annonce_id=c.annonce_id) sak ON sak.kompetence_id=k._id ",
-          q2,
-          " GROUP BY k._id ORDER BY amount ",
-          ifelse(input$showCompetencesDescending==TRUE, "desc", "asc")
-        )
-        csvDataQuery <- paste0(
-          csvData$allQuery, 
-          " limit ",
-          input$limitCountCompetences
-        )
-        # print(csvDataQuery)
+        csvDataQuery <- buildCompetenceQuery(
+          input$showSearchedCompetences, 
+          input$showOtherCompetences, 
+          input$showCompetencesDescending, 
+          input$limitCountCompetences) 
+        #print(csvDataQuery)
         csvData$kompetenceListe <- dbGetQuery(con,csvDataQuery)
 
+        setProgress(2/5)        
         dbDisconnect(con)
         
         setProgress(3/5)
@@ -1059,7 +1173,7 @@ server <- function(input, output, session){
     }
     
     JSONvalue = paste0("{", periodParam, adIdParam, regionParam, textcontentParam, kompetenceParam, metadataParam, "}") 
-    print(JSONvalue)
+    #print(JSONvalue)
     return(JSONvalue)
   }
 

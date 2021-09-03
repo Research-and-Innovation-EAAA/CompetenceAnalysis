@@ -3,6 +3,22 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "Match", 
+        "da": "Match"
+      },
+      {
+        "en": "Searched but not found", 
+        "da": "Søgt men ikke fundet"
+      },
+      {
+        "en": "Searched and found", 
+        "da": "Søgt og fundet"
+      },
+      {
+        "en": "Not searched but found", 
+        "da": "Ikke søgt men fundet"
+      },
+      {
         "en": "COMPETENCE ANALYSIS", 
         "da": "KOMPETENCEANALYSE"
       },
