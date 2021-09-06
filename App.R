@@ -216,8 +216,8 @@ ui <- fluidPage(
                       wellPanel(
                         fluidRow(
                           column(6,
-                                 checkboxInput("showSearchedCompetences", "Vis søgte kompetencer", TRUE),
-                                 checkboxInput("showOtherCompetences", "Vis andre kompetencer", FALSE)
+                                 checkboxInput("showSearchedCompetences", i18n$t("Show searched"), TRUE),
+                                 checkboxInput("showOtherCompetences", i18n$t("Show other"), FALSE)
                           ),
                           column(6, checkboxInput("showCompetencesDescending", i18n$t("Show descending"), TRUE),
                                            numericInput("limitCountCompetences", NULL, 30, min = 1, max = 100000)

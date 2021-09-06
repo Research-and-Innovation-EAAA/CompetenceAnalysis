@@ -3,6 +3,14 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "Show searched", 
+        "da": "Vis søgte"
+      },
+      {
+        "en": "Show other", 
+        "da": "Vis andre"
+      },
+      {
         "en": "Match", 
         "da": "Match"
       },
