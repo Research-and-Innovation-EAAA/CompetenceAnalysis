@@ -215,12 +215,28 @@ ui <- fluidPage(
              tabPanel(title=i18n$t("Competence Comparison"),
                       wellPanel(
                         fluidRow(
-                          column(6,
-                                 checkboxInput("showSearchedCompetences", i18n$t("Show searched"), TRUE),
-                                 checkboxInput("showOtherCompetences", i18n$t("Show other"), FALSE)
+                          column(4,
+                                 strong(i18n$t("Show")),
+                                 numericInput("limitCountCompetences", NULL, 30, min = 1, max = 100000)
                           ),
-                          column(6, checkboxInput("showCompetencesDescending", i18n$t("Show descending"), TRUE),
-                                           numericInput("limitCountCompetences", NULL, 30, min = 1, max = 100000)
+                          column(4,
+                                 radioButtons(inputId = "showMostOrLess", 
+                                              i18n$t("Efterspurgt"),
+                                              choiceNames = c(
+                                                i18n$t("Most"),
+                                                i18n$t("Less")
+                                              ),
+                                              choiceValues = c(
+                                                "Most",
+                                                "Less"
+                                              ),
+                                              selected = "Most"
+                                 )
+                          ),
+                          column(4,
+                                 strong(i18n$t("Among")),
+                                 checkboxInput("showSearchedCompetences", i18n$t("Selected"), TRUE),
+                                 checkboxInput("showOtherCompetences", i18n$t("Andre"), FALSE)
                           )
                         ),
                         textOutput(outputId = "kompetenceErrorField"),
@@ -384,7 +400,7 @@ server <- function(input, output, session){
     updateDataFields()
   }) 
   
-  observeEvent(input$showCompetencesDescending, ignoreInit = TRUE,{
+  observeEvent(input$showMostOrLess, ignoreInit = TRUE,{
     updateCurrentTab()
   })
   
@@ -1001,7 +1017,7 @@ server <- function(input, output, session){
         csvDataQuery <- buildCompetenceQuery(
           input$showSearchedCompetences, 
           input$showOtherCompetences, 
-          input$showCompetencesDescending, 
+          input$showMostOrLess=="Most", 
           input$limitCountCompetences) 
         #print(csvDataQuery)
         csvData$kompetenceListe <- dbGetQuery(con,csvDataQuery)
@@ -1013,7 +1029,7 @@ server <- function(input, output, session){
         if (dim(csvData$kompetenceListe)[1] != 0) {
           # If i order the table in the correct order in the SQL query the 'Limit 30' option cuts off the biggest instead of the smallest.
           # Which is why the table must be ordered after the query.
-          csvData$kompetenceListe <- csvData$kompetenceListe[order(csvData$kompetenceListe$amount, decreasing = (input$showCompetencesDescending==FALSE)),]
+          csvData$kompetenceListe <- csvData$kompetenceListe[order(csvData$kompetenceListe$amount, decreasing = (input$showMostOrLess=="Less")),]
           
           setProgress(4/5)
           output$kompetenceDiagram <- renderPlot(height = (200+18*input$limitCountCompetences), {

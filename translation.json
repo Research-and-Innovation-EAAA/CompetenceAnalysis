@@ -3,12 +3,28 @@
   "languages": ["en", "da"],
   "translation": [
       {
-        "en": "Show searched", 
-        "da": "Vis søgte"
+        "en": "Among", 
+        "da": "Blandt"
       },
       {
-        "en": "Show other", 
-        "da": "Vis andre"
+        "en": "Requested", 
+        "da": "Efterspurgt"
+      },
+      {
+        "en": "Show", 
+        "da": "Vis"
+      },
+      {
+        "en": "Most", 
+        "da": "Mest"
+      },
+      {
+        "en": "Less", 
+        "da": "Mindst"
+      },
+      {
+        "en": "Other", 
+        "da": "Andre"
       },
       {
         "en": "Match", 
@@ -193,10 +209,6 @@
       {
         "en": "Minimum occurences",
         "da": "Minimum forekomster"
-      },
-      {
-        "en": "Show descending",
-        "da": "Vis aftagende"
       },
       {
         "en": "Download ID list",
