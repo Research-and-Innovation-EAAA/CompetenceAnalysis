@@ -3,6 +3,10 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "Size", 
+        "da": "Størrelse"
+      },
+      {
         "en": "Shape", 
         "da": "Form"
       },

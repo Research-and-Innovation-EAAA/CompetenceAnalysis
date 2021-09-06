@@ -217,12 +217,11 @@ ui <- fluidPage(
                         
                                fluidRow(
                                  column(4,
-                                        strong(i18n$t("Show")),
-                                        numericInput("limitCountCompetences", NULL, 30, min = 1, max = 100000)
+                                        numericInput(inputId="limitCountCompetences", label=i18n$t("Show"), value=30, min=1, max=100000)
                                  ),
                                  column(4,
                                         radioButtons(inputId = "showMostOrLess", 
-                                                     i18n$t("Efterspurgt"),
+                                                     i18n$t("Requested"),
                                                      choiceNames = c(
                                                        i18n$t("Most"),
                                                        i18n$t("Less")
@@ -236,33 +235,49 @@ ui <- fluidPage(
                                  ),
                                  column(4,
                                         strong(i18n$t("Among")),
-                                        checkboxInput("showSearchedCompetences", i18n$t("Selected"), TRUE),
+                                        checkboxInput(inputId="showSearchedCompetences", label=i18n$t("Selected"), value=TRUE),
                                         checkboxInput("showOtherCompetences", i18n$t("Other"), FALSE)
                                  )
                                ),
                                  tabsetPanel(id = "matchPanel",
-                                             tabPanel(i18n$t("Diagram"),
+                                             tabPanel("Diagram",
                                                       wellPanel(
                                                         style = "background: white", 
                                                         textOutput(outputId = "kompetenceErrorField"),
-                                                        plotOutput("kompetenceDiagram", height = 620),
+                                                        plotOutput("kompetenceDiagram", height = 820),
                                                         downloadButton("downloadKompetenceData", "Download data")
                                                       )
                                              ),
-                                             tabPanel(i18n$t("Wordcloud"),
+                                             tabPanel("Wordcloud",
                                                       wellPanel(
                                                         style = "background: white", 
-                                                        selectInput(inputId = "wordcloudColor",
+                                                        fluidRow(
+                                                          column(4,
+                                                                 selectInput(inputId = "wordcloudColor",
                                                                     label = i18n$t("Color"), 
                                                                     choices = list("random-dark", "random-light","red","yellow","aqua","blue","skyblue","green","navy","teal","olive","lime","orange","fuchsia","purple","maroon","black"),
                                                                     multiple = FALSE
-                                                        ),
-                                                        selectInput(inputId = "wordcloudShape",
+                                                                 )
+                                                          ),
+                                                          column(4,
+                                                                 selectInput(inputId = "wordcloudShape",
                                                                     label = i18n$t("Shape"), 
                                                                     choices = list("circle", "cardioid","diamond","triangle-forward","triangle","pentagon","star"),
                                                                     multiple = FALSE
+                                                                 )
+                                                          ),
+                                                          column(4,
+                                                                 numericInput(
+                                                                   inputId = "wordcloudSize",
+                                                                   label = i18n$t("Size"),
+                                                                   value = 0.8,
+                                                                   min = 0.1,
+                                                                   max = 10,
+                                                                   step = 0.1
+                                                                 )     
+                                                          )
                                                         ),
-                                                        wordcloud2Output("wordcloud", width = "100%", height = 620)
+                                                        wordcloud2Output("wordcloud", width = "100%", height = 820)
                                                       )
                                              )
                                  )
@@ -976,8 +991,12 @@ server <- function(input, output, session){
         }
 
         setProgress(4/5)
-        output$wordcloud  = renderWordcloud2(wordcloud2(data = csvData$kompetenceListe, gridSize=1, color = input$wordcloudColor, shape = input$wordcloudShape))
-        
+
+        maxValue = max(csvData$kompetenceListe$freq)
+        minValue = min(csvData$kompetenceListe$freq)
+        wcData <- mutate (csvData$kompetenceListe, word = word, freq = 3+round((freq-minValue+1)*10/(maxValue-minValue+1)), digits=0)
+        output$wordcloud  = renderWordcloud2(wordcloud2(data=wcData, color=input$wordcloudColor, size=input$wordcloudSize, shape=input$wordcloudShape))
+
         setProgress(5/5)
       })
   }
