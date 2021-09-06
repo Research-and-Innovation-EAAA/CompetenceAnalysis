@@ -3,6 +3,14 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "Shape", 
+        "da": "Form"
+      },
+      {
+        "en": "Color", 
+        "da": "Farve"
+      },
+      {
         "en": "Among", 
         "da": "Blandt"
       },
@@ -177,10 +185,6 @@
       {
         "en": "Search criterea",
         "da": "S\u00F8gekriterier"
-      },
-      {
-        "en": "Competence Comparison",
-        "da": "Kompetencesammenligning"
       },
       {
         "en": "Show only searched competencies",

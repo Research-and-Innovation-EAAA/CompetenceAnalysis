@@ -212,37 +212,61 @@ ui <- fluidPage(
                     )
            ),
            tabsetPanel(id = "outputPanel",
-             tabPanel(title=i18n$t("Competence Comparison"),
+             tabPanel(title=i18n$t("Competences"),
                       wellPanel(
-                        fluidRow(
-                          column(4,
-                                 strong(i18n$t("Show")),
-                                 numericInput("limitCountCompetences", NULL, 30, min = 1, max = 100000)
-                          ),
-                          column(4,
-                                 radioButtons(inputId = "showMostOrLess", 
-                                              i18n$t("Efterspurgt"),
-                                              choiceNames = c(
-                                                i18n$t("Most"),
-                                                i18n$t("Less")
-                                              ),
-                                              choiceValues = c(
-                                                "Most",
-                                                "Less"
-                                              ),
-                                              selected = "Most"
+                        
+                               fluidRow(
+                                 column(4,
+                                        strong(i18n$t("Show")),
+                                        numericInput("limitCountCompetences", NULL, 30, min = 1, max = 100000)
+                                 ),
+                                 column(4,
+                                        radioButtons(inputId = "showMostOrLess", 
+                                                     i18n$t("Efterspurgt"),
+                                                     choiceNames = c(
+                                                       i18n$t("Most"),
+                                                       i18n$t("Less")
+                                                     ),
+                                                     choiceValues = c(
+                                                       "Most",
+                                                       "Less"
+                                                     ),
+                                                     selected = "Most"
+                                        )
+                                 ),
+                                 column(4,
+                                        strong(i18n$t("Among")),
+                                        checkboxInput("showSearchedCompetences", i18n$t("Selected"), TRUE),
+                                        checkboxInput("showOtherCompetences", i18n$t("Other"), FALSE)
                                  )
-                          ),
-                          column(4,
-                                 strong(i18n$t("Among")),
-                                 checkboxInput("showSearchedCompetences", i18n$t("Selected"), TRUE),
-                                 checkboxInput("showOtherCompetences", i18n$t("Andre"), FALSE)
-                          )
-                        ),
-                        textOutput(outputId = "kompetenceErrorField"),
-                        plotOutput("kompetenceDiagram", height = 620),
-                        downloadButton("downloadKompetenceData", "Download data")
-                      )
+                               ),
+                                 tabsetPanel(id = "matchPanel",
+                                             tabPanel(i18n$t("Diagram"),
+                                                      wellPanel(
+                                                        style = "background: white", 
+                                                        textOutput(outputId = "kompetenceErrorField"),
+                                                        plotOutput("kompetenceDiagram", height = 620),
+                                                        downloadButton("downloadKompetenceData", "Download data")
+                                                      )
+                                             ),
+                                             tabPanel(i18n$t("Wordcloud"),
+                                                      wellPanel(
+                                                        style = "background: white", 
+                                                        selectInput(inputId = "wordcloudColor",
+                                                                    label = i18n$t("Color"), 
+                                                                    choices = list("random-dark", "random-light","red","yellow","aqua","blue","skyblue","green","navy","teal","olive","lime","orange","fuchsia","purple","maroon","black"),
+                                                                    multiple = FALSE
+                                                        ),
+                                                        selectInput(inputId = "wordcloudShape",
+                                                                    label = i18n$t("Shape"), 
+                                                                    choices = list("circle", "cardioid","diamond","triangle-forward","triangle","pentagon","star"),
+                                                                    multiple = FALSE
+                                                        ),
+                                                        wordcloud2Output("wordcloud", width = "100%", height = 620)
+                                                      )
+                                             )
+                                 )
+               )
              ),
              tabPanel("Progression", 
                       wellPanel(
@@ -277,21 +301,6 @@ ui <- fluidPage(
                           downloadButton("downloadAnnonceNumre", i18n$t("Download ID list"))
                         )
                       )
-             ),
-             tabPanel(title=i18n$t("Match"),
-                      wellPanel(
-                        tabsetPanel(id = "matchPanel",
-                                    tabPanel(i18n$t("Searched and found"),
-                                             wordcloud2Output("my_wcMiddle", width = "100%")
-                                    ),
-                                    tabPanel(i18n$t("Not searched but found"),
-                                             wordcloud2Output("my_wcRight", width = "100%")
-                                    ),
-                                    tabPanel(i18n$t("Searched but not found"),
-                                             wordcloud2Output("my_wcLeft", width = "100%")
-                                    )
-                        )
-                      )       
              )
            )
     )
@@ -417,7 +426,7 @@ server <- function(input, output, session){
   })
   
   observeEvent(input$outputPanel, ignoreInit = TRUE, {
-    if (input$outputPanel == i18n$t("Competence Comparison")){
+    if (input$outputPanel == i18n$t("Competences")){
       current$tab <- 1
       if (tabUpdates$kompetence){
         tabUpdates$kompetence <- FALSE
@@ -436,13 +445,6 @@ server <- function(input, output, session){
       if (tabUpdates$annonce){
         tabUpdates$annonce <- FALSE
         updateAnnonceList()
-      }
-    }
-    else if (input$outputPanel == i18n$t("Match")){
-      current$tab <- 4
-      if (tabUpdates$wordcloud){
-        tabUpdates$wordcloud <- FALSE
-        updateWordcloudDiagram()
       }
     }
   })
@@ -754,23 +756,14 @@ server <- function(input, output, session){
       updateKompetenceDiagram()
       tabUpdates$progression <- TRUE
       tabUpdates$annonce <- TRUE
-      tabUpdates$wordcloud <- TRUE
     }
     else if (current$tab == 2){
       updateProgressionDiagram()
       tabUpdates$kompetence <- TRUE
       tabUpdates$annonce <- TRUE
-      tabUpdates$wordcloud <- TRUE
     }
     else if (current$tab == 3){
       updateAnnonceList()
-      tabUpdates$kompetence <- TRUE
-      tabUpdates$progression <- TRUE
-      tabUpdates$wordcloud <- TRUE
-    }
-    else if (current$tab == 4){
-      updateWordcloudDiagram()
-      tabUpdates$annonce <- TRUE
       tabUpdates$kompetence <- TRUE
       tabUpdates$progression <- TRUE
     }
@@ -925,86 +918,17 @@ server <- function(input, output, session){
     }
     
     csvDataQuery <- paste0(
-      "SELECT k.prefferredLabel k_prefferredLabel, count(sak.annonce_id) as amount FROM kompetence k LEFT JOIN (SELECT ak.annonce_id annonce_id, ak.kompetence_id kompetence_id FROM annonce_kompetence ak JOIN ",
+      "SELECT k.prefferredLabel word, count(sak.annonce_id) as freq FROM kompetence k LEFT JOIN (SELECT ak.annonce_id annonce_id, ak.kompetence_id kompetence_id FROM annonce_kompetence ak JOIN ",
       getSearchAdResultTableName(),
       " c ON ak.annonce_id=c.annonce_id) sak ON sak.kompetence_id=k._id ",
       q2,
-      " GROUP BY k._id ORDER BY amount ",
+      " GROUP BY k._id ORDER BY freq ",
       ifelse(isTRUE(returnCompetencesDescending), ' DESC ', ' ASC '),
       ifelse(is.numeric(limit) & length(limit)>0 & limit>0, paste0(' LIMIT ', limit, ' '), ' ')
     )
     
     return(csvDataQuery)
   }
-  
-  updateWordcloudDiagram <- function(){
-    #if(length(kompetencer$sk) != 0){
-    withProgress(message = "Opdaterer Diagram", expr = {
-      setProgress(0)
-      con <- dbConnect(RMariaDB::MariaDB(),host = credentials.host, user = credentials.user, password = credentials.password, port = credentials.port, db = credentials.db, bigint = c("numeric"))
-      stopifnot(is.object(con))
-      
-      setProgress(1/5)
-      
-      csvDataQuery <- buildCompetenceQuery(
-        includeSearchedCompetences = TRUE, 
-        includeOtherCompetences = FALSE, 
-        returnCompetencesDescending = FALSE, 
-        40) 
-      #print(csvDataQuery)
-      csvData$searchedButNotFoundCompetences <- dbGetQuery(con,csvDataQuery)
-      csvData$searchedButNotFoundCompetences <- 
-        csvData$searchedButNotFoundCompetences %>% rename (
-          word = k_prefferredLabel,
-          freq = amount
-        )
-      maxfreq = max(csvData$searchedButNotFoundCompetences$freq)
-      csvData$searchedButNotFoundCompetences <- csvData$searchedButNotFoundCompetences %>% 
-        mutate(freq = maxfreq-freq+1)
-      
-      setProgress(2/5)        
-
-      csvDataQuery <- buildCompetenceQuery(
-        includeSearchedCompetences = TRUE, 
-        includeOtherCompetences = FALSE, 
-        returnCompetencesDescending = TRUE, 
-        40) 
-       #print(csvDataQuery)
-      csvData$searchedAndFoundCompetences <- dbGetQuery(con,csvDataQuery)
-      csvData$searchedAndFoundCompetences <- 
-        csvData$searchedAndFoundCompetences %>% rename (
-          word = k_prefferredLabel,
-          freq = amount
-        )
-      
-      setProgress(3/5)
-      
-      csvDataQuery <- buildCompetenceQuery(
-        includeSearchedCompetences = FALSE, 
-        includeOtherCompetences = TRUE, 
-        returnCompetencesDescending = TRUE, 
-        40) 
-       #print(csvDataQuery)
-      csvData$notSearchedButFoundCompetences <- dbGetQuery(con,csvDataQuery)
-      csvData$notSearchedButFoundCompetences <- 
-        csvData$notSearchedButFoundCompetences %>% rename (
-          word = k_prefferredLabel,
-          freq = amount
-        )
-      
-      setProgress(4/5)
-      
-      dbDisconnect(con)
-      
-      setProgress(5/5)
-      
-      output$my_wcLeft  = renderWordcloud2(wordcloud2(data = csvData$searchedButNotFoundCompetences, size = 0.4,color = "red", shape="circle"))
-      output$my_wcMiddle  = renderWordcloud2(wordcloud2(data = csvData$searchedAndFoundCompetences, size = 0.4,color = "green", shape="circle"))
-      output$my_wcRight  = renderWordcloud2(wordcloud2(data = csvData$notSearchedButFoundCompetences, size = 0.4,color = "blue", shape="circle"))
-    
-    })
-  }
-  
   
   updateKompetenceDiagram <- function(){
       #if(length(kompetencer$sk) != 0){
@@ -1029,20 +953,20 @@ server <- function(input, output, session){
         if (dim(csvData$kompetenceListe)[1] != 0) {
           # If i order the table in the correct order in the SQL query the 'Limit 30' option cuts off the biggest instead of the smallest.
           # Which is why the table must be ordered after the query.
-          csvData$kompetenceListe <- csvData$kompetenceListe[order(csvData$kompetenceListe$amount, decreasing = (input$showMostOrLess=="Less")),]
+          csvData$kompetenceListe <- csvData$kompetenceListe[order(csvData$kompetenceListe$freq, decreasing = (input$showMostOrLess=="Less")),]
           
           setProgress(4/5)
           output$kompetenceDiagram <- renderPlot(height = (200+18*input$limitCountCompetences), {
             
             par(mar = c(5,18,4,2) + 0.1)
-            ylim <- c(0, 1.2*max(csvData$kompetenceListe$amount))
-            xx <- barplot(csvData$kompetenceListe$amount, xlim = ylim, 
+            ylim <- c(0, 1.2*max(csvData$kompetenceListe$freq))
+            xx <- barplot(csvData$kompetenceListe$freq, xlim = ylim, 
                     main=paste0(ifelse(input$showSearchedCompetences, ifelse(input$showOtherCompetences, 'Alle','Søgte'),'Andre'), " kompetencer i jobopslag\n", input$regChoice, " fra ", input$dateRange[1], " til ", input$dateRange[2], "."), 
-                    names.arg = csvData$kompetenceListe$k_prefferredLabel,
+                    names.arg = csvData$kompetenceListe$word,
                     las = 2,
                     horiz = TRUE
             )
-            text(y = xx, x = csvData$kompetenceListe$amount, label = csvData$kompetenceListe$amount, pos = 4, cex = 1.2, col = "blue")
+            text(y = xx, x = csvData$kompetenceListe$freq, label = csvData$kompetenceListe$freq, pos = 4, cex = 1.2, col = "blue")
           })
           output$kompetenceErrorField <- renderText("")
         }
@@ -1050,13 +974,12 @@ server <- function(input, output, session){
           output$kompetenceErrorField <- renderText("Ingen annoncer fundet.")
           output$kompetenceDiagram <- NULL
         }
+
+        setProgress(4/5)
+        output$wordcloud  = renderWordcloud2(wordcloud2(data = csvData$kompetenceListe, gridSize=1, color = input$wordcloudColor, shape = input$wordcloudShape))
+        
         setProgress(5/5)
       })
-    #}
-    #else{
-    #  output$kompetenceErrorField <- renderText("")
-    #  output$kompetenceDiagram <- NULL
-    #}
   }
  
   buildSearchParameterJSON <- function() {
