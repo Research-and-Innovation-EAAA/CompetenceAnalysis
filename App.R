@@ -252,28 +252,38 @@ ui <- fluidPage(
                                                       wellPanel(
                                                         style = "background: white", 
                                                         fluidRow(
-                                                          column(4,
+                                                          column(3,
                                                                  selectInput(inputId = "wordcloudColor",
                                                                     label = i18n$t("Color"), 
                                                                     choices = list("random-dark", "random-light","red","yellow","aqua","blue","skyblue","green","navy","teal","olive","lime","orange","fuchsia","purple","maroon","black"),
                                                                     multiple = FALSE
                                                                  )
                                                           ),
-                                                          column(4,
+                                                          column(3,
                                                                  selectInput(inputId = "wordcloudShape",
                                                                     label = i18n$t("Shape"), 
                                                                     choices = list("circle", "cardioid","diamond","triangle-forward","triangle","pentagon","star"),
                                                                     multiple = FALSE
                                                                  )
                                                           ),
-                                                          column(4,
+                                                          column(3,
                                                                  numericInput(
                                                                    inputId = "wordcloudSize",
                                                                    label = i18n$t("Size"),
-                                                                   value = 0.8,
+                                                                   value = 0.4,
                                                                    min = 0.1,
                                                                    max = 10,
                                                                    step = 0.1
+                                                                 )     
+                                                          ),
+                                                          column(3,
+                                                                 numericInput(
+                                                                   inputId = "wordcloudFlatten",
+                                                                   label = i18n$t("Flatten"),
+                                                                   value = 0.00,
+                                                                   min = 0.00,
+                                                                   max = 1.00,
+                                                                   step = 0.01
                                                                  )     
                                                           )
                                                         ),
@@ -403,6 +413,10 @@ server <- function(input, output, session){
       write.csv(progressionListe, file, row.names = FALSE)
     }
   )
+  
+  observeEvent(input$wordcloudFlatten, ignoreInit = TRUE, {
+    updateCurrentTab()
+  })
   
   observeEvent(input$dateRange, ignoreInit = TRUE, {
     updateCurrentTab()
@@ -994,7 +1008,9 @@ server <- function(input, output, session){
 
         maxValue = max(csvData$kompetenceListe$freq)
         minValue = min(csvData$kompetenceListe$freq)
-        wcData <- mutate (csvData$kompetenceListe, word = word, freq = 3+round((freq-minValue+1)*10/(maxValue-minValue+1)), digits=0)
+        flatten = input$wordcloudFlatten
+        wcData <- mutate (csvData$kompetenceListe, word = word, freq=ifelse(round(minValue-(minValue*flatten)+(freq-minValue)*(1-flatten))<=0, 1, round(minValue-(minValue*flatten)+(freq-minValue)*(1-flatten))), digits=0)
+        #wcData <- csvData$kompetenceListe
         output$wordcloud  = renderWordcloud2(wordcloud2(data=wcData, color=input$wordcloudColor, size=input$wordcloudSize, shape=input$wordcloudShape))
 
         setProgress(5/5)

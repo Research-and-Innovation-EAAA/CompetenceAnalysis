@@ -3,6 +3,10 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "Flatten", 
+        "da": "Udjævn"
+      },
+      {
         "en": "Size", 
         "da": "Størrelse"
       },
