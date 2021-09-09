@@ -3,6 +3,22 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "Select color theme", 
+        "da": "Vælg farvetema"
+      },
+      {
+        "en": "Select shape of diagram", 
+        "da": "Vælg diagrammets form"
+      },
+      {
+        "en": "Enter 1-100 for diagram size", 
+        "da": "Indtast 1-100 som diagramstørrelse"
+      },
+      {
+        "en": "Enter 0-100 for uniform font size", 
+        "da": "Indtast 0-100 for ensartet skriftstørrelse"
+      },
+      {
         "en": "Flatten", 
         "da": "Udjævn"
       },

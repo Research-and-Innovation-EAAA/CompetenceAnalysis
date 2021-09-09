@@ -1,6 +1,7 @@
 library(DBI)
 library(RMariaDB)
 library(shiny)
+library(shinyBS)
 library(shiny.i18n)
 library(dplyr)
 library(ggplot2)
@@ -257,34 +258,42 @@ ui <- fluidPage(
                                                                     label = i18n$t("Color"), 
                                                                     choices = list("random-dark", "random-light","red","yellow","aqua","blue","skyblue","green","navy","teal","olive","lime","orange","fuchsia","purple","maroon","black"),
                                                                     multiple = FALSE
-                                                                 )
+                                                                 ),
+                                                                 bsTooltip(id = "wordcloudColor", 
+                                                                           title = i18n$t("Select color theme"))
                                                           ),
                                                           column(3,
                                                                  selectInput(inputId = "wordcloudShape",
                                                                     label = i18n$t("Shape"), 
                                                                     choices = list("circle", "cardioid","diamond","triangle-forward","triangle","pentagon","star"),
                                                                     multiple = FALSE
-                                                                 )
+                                                                 ),
+                                                                 bsTooltip(id = "wordcloudShape", 
+                                                                           title = i18n$t("Select shape of diagram"))
                                                           ),
                                                           column(3,
                                                                  numericInput(
                                                                    inputId = "wordcloudSize",
                                                                    label = i18n$t("Size"),
-                                                                   value = 0.4,
-                                                                   min = 0.1,
-                                                                   max = 10,
-                                                                   step = 0.1
-                                                                 )     
+                                                                   value = 40,
+                                                                   min = 1,
+                                                                   max = 100,
+                                                                   step = 1
+                                                                 ),
+                                                                 bsTooltip(id = "wordcloudSize", 
+                                                                           title = i18n$t("Enter 1-100 for diagram size"))     
                                                           ),
                                                           column(3,
                                                                  numericInput(
                                                                    inputId = "wordcloudFlatten",
                                                                    label = i18n$t("Flatten"),
-                                                                   value = 0.00,
-                                                                   min = 0.00,
-                                                                   max = 1.00,
-                                                                   step = 0.01
-                                                                 )     
+                                                                   value = 0,
+                                                                   min = 0,
+                                                                   max = 100,
+                                                                   step = 1
+                                                                 ),
+                                                                 bsTooltip(id = "wordcloudFlatten", 
+                                                                           title = i18n$t("Enter 0-100 for uniform font size"))
                                                           )
                                                         ),
                                                         wordcloud2Output("wordcloud", width = "100%", height = 820)
@@ -1008,10 +1017,10 @@ server <- function(input, output, session){
 
         maxValue = max(csvData$kompetenceListe$freq)
         minValue = min(csvData$kompetenceListe$freq)
-        flatten = input$wordcloudFlatten
+        flatten = input$wordcloudFlatten/100
         wcData <- mutate (csvData$kompetenceListe, word = word, freq=ifelse(round(minValue-(minValue*flatten)+(freq-minValue)*(1-flatten))<=0, 1, round(minValue-(minValue*flatten)+(freq-minValue)*(1-flatten))), digits=0)
         #wcData <- csvData$kompetenceListe
-        output$wordcloud  = renderWordcloud2(wordcloud2(data=wcData, color=input$wordcloudColor, size=input$wordcloudSize, shape=input$wordcloudShape))
+        output$wordcloud  = renderWordcloud2(wordcloud2(data=wcData, color=input$wordcloudColor, size=input$wordcloudSize/100, shape=input$wordcloudShape))
 
         setProgress(5/5)
       })
