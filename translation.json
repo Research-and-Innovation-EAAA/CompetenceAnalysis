@@ -3,6 +3,22 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "Number of competences to show", 
+        "da": "Antal kompetencer til visning"
+      },
+      {
+        "en": "Select competences to show", 
+        "da": "Vælg kompetencer til visning"
+      },
+      {
+        "en": "Show selected competences", 
+        "da": "Vis valgte kompetencer"
+      },
+      {
+        "en": "Show not selected competences", 
+        "da": "Vis ikke valgte kompetencer"
+      },
+      {
         "en": "Select color theme", 
         "da": "Vælg farvetema"
       },

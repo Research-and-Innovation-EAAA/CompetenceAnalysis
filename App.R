@@ -218,7 +218,9 @@ ui <- fluidPage(
                         
                                fluidRow(
                                  column(4,
-                                        numericInput(inputId="limitCountCompetences", label=i18n$t("Show"), value=30, min=1, max=100000)
+                                        numericInput(inputId="limitCountCompetences", label=i18n$t("Show"), value=30, min=1, max=100000),
+                                        bsTooltip(id = "limitCountCompetences", 
+                                                  title = i18n$t("Number of competences to show"))
                                  ),
                                  column(4,
                                         radioButtons(inputId = "showMostOrLess", 
@@ -232,12 +234,18 @@ ui <- fluidPage(
                                                        "Less"
                                                      ),
                                                      selected = "Most"
-                                        )
+                                        ),
+                                        bsTooltip(id = "showMostOrLess", 
+                                                  title = i18n$t("Select competences to show"))
                                  ),
                                  column(4,
                                         strong(i18n$t("Among")),
                                         checkboxInput(inputId="showSearchedCompetences", label=i18n$t("Selected"), value=TRUE),
-                                        checkboxInput("showOtherCompetences", i18n$t("Other"), FALSE)
+                                        bsTooltip(id = "showSearchedCompetences", 
+                                                  title = i18n$t("Show selected competences")),
+                                        checkboxInput("showOtherCompetences", i18n$t("Other"), FALSE),
+                                        bsTooltip(id = "showOtherCompetences", 
+                                                  title = i18n$t("Show not selected competences"))
                                  )
                                ),
                                  tabsetPanel(id = "matchPanel",
