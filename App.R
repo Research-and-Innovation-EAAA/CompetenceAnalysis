@@ -98,59 +98,82 @@ ui <- fluidPage(
                                   width = "400px"
                       )
                ),
-               column(9, textInput(inputId = "adIdSearchField", label = i18n$t("Ad id"),  placeholder = i18n$t("Enter one or more comma separated ad ids"))
-               ),
-               column(3, align = "center", actionButton(inputId = "addAdId", label = i18n$t("Add ad id \u02C3"), style = "margin-top: 25px", width = 150)
-               ),
-               column(9, 
-                      selectInput(inputId = "selectedAdIdSearchTerms",
+               column(12,
+                tabsetPanel(
+                 tabPanel(title=i18n$t("Ad id"),
+                  wellPanel(
+                    style = "background: white; height:400px", 
+                    column(9, 
+                           textInput(inputId = "adIdSearchField", label = i18n$t("Ad id"),  placeholder = i18n$t("Enter one or more comma separated ad ids"))
+                    ),
+                    column(3, 
+                           align = "center", actionButton(inputId = "addAdId", label = i18n$t("Add ad id \u02C3"), style = "margin-top: 25px", width = 150)
+                    ),
+                    column(9, 
+                           selectInput(inputId = "selectedAdIdSearchTerms",
                                   label = i18n$t("Selected Ad ids"),
-                                  size = 10,
+                                  size = 15,
                                   selectize = FALSE,
                                   multiple = TRUE,
                                   choices = list(),
                                   width = "100%"
                       )
-               ),
-               column(3,align = "center", style = "margin-top: 20px;",
-                      actionButton("removeAdId", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
-                      actionButton("removeAllAdIds", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
-               ),
-               column(9, textInput(inputId = "titleSearchField", label = i18n$t("Job Title"),  placeholder = i18n$t("Enter one or more comma separated job titles"))
-               ),
-               column(3, align = "center", actionButton(inputId = "addTitle", label = i18n$t("Add Title \u02C3"), style = "margin-top: 25px", width = 150)
-               ),
-               column(9, 
-                      selectInput(inputId = "selectedTitleSearchTerms",
-                                  label = i18n$t("Selected Job Title"),
-                                  size = 10,
-                                  selectize = FALSE,
-                                  multiple = TRUE,
-                                  choices = list(),
-                                  width = "100%"
-                      )
-               ),
-               column(3,align = "center", style = "margin-top: 20px;",
-                      actionButton("removeTitle", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
-                      actionButton("removeAllTitles", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
-               ),
-               column(9, textInput(inputId = "TextSearchField", label = i18n$t("Job Text"),  placeholder = i18n$t("Enter one or more comma separated job texts"))
-               ),
-               column(3, align = "center", actionButton(inputId = "addText", label = i18n$t("Add Text \u02C3"), style = "margin-top: 25px", width = 150)
-               ),
-               column(9, 
-                      selectInput(inputId = "selectedTextSearchTerms",
-                                  label = i18n$t("Selected Job Text"),
-                                  size = 10,
-                                  selectize = FALSE,
-                                  multiple = TRUE,
-                                  choices = list(),
-                                  width = "100%"
-                      )
-               ),
-               column(3,align = "center", style = "margin-top: 20px;",
-                      actionButton("removeText", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
-                      actionButton("removeAllTexts", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
+                    ),
+                    column(3, 
+                           align = "center", style = "margin-top: 20px;",
+                           actionButton("removeAdId", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
+                          actionButton("removeAllAdIds", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
+                    )
+                   
+                  )
+                 ),
+                 tabPanel(title=i18n$t("Job Title"),
+                          wellPanel(
+                            style = "background: white; height:400px",
+                            column(9, textInput(inputId = "titleSearchField", label = i18n$t("Job Title"),  placeholder = i18n$t("Enter one or more comma separated job titles"))
+                            ),
+                            column(3, align = "center", actionButton(inputId = "addTitle", label = i18n$t("Add Title \u02C3"), style = "margin-top: 25px", width = 150)
+                            ),
+                            column(9,
+                                   selectInput(inputId = "selectedTitleSearchTerms",
+                                               label = i18n$t("Selected Job Title"),
+                                               size = 10,
+                                               selectize = FALSE,
+                                               multiple = TRUE,
+                                               choices = list(),
+                                               width = "100%"
+                                   )
+                            ),
+                            column(3,align = "center", style = "margin-top: 20px;",
+                                   actionButton("removeTitle", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
+                                   actionButton("removeAllTitles", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
+                            )
+                          )
+                 ),
+                 tabPanel(title=i18n$t("Job Text"),
+                          wellPanel(
+                            style = "background: white; height:400px",
+                            column(9, textInput(inputId = "TextSearchField", label = i18n$t("Job Text"),  placeholder = i18n$t("Enter one or more comma separated job texts"))
+                            ),
+                            column(3, align = "center", actionButton(inputId = "addText", label = i18n$t("Add Text \u02C3"), style = "margin-top: 25px", width = 150)
+                            ),
+                            column(9, 
+                                   selectInput(inputId = "selectedTextSearchTerms",
+                                               label = i18n$t("Selected Job Text"),
+                                               size = 10,
+                                               selectize = FALSE,
+                                               multiple = TRUE,
+                                               choices = list(),
+                                               width = "100%"
+                                   )
+                            ),
+                            column(3,align = "center", style = "margin-top: 20px;",
+                                   actionButton("removeText", label = i18n$t("\u02C2 Remove"), width = 150, style = "margin-top: 10px"),
+                                   actionButton("removeAllTexts", label = i18n$t("\u02C2\u02C2 Remove All"), width = 150, style = "margin-top: 10px")
+                            )
+                          ) 
+                 )
+                )
                )
                
              )
