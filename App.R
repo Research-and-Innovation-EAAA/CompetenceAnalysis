@@ -12,6 +12,7 @@ library(stringr)
 library(wordcloud2)
 library(shinyWidgets)
 library(shinyjs)
+library(shinyjqui)
 
 source(file = 'credentials.R')
 i18n <- Translator$new(translation_json_path = "translation.json")
@@ -36,13 +37,9 @@ ui <- fluidPage(
     ),
     column(6, style = "margin-top: 5px; text-align: right", img(src = "EAAA_Logo.jpg"))
   ),
-  fluidRow(style = "border-bottom: 2px solid black; margin-top: 10px;"),
+  fluidRow(style = "border-bottom: 2px solid black; margin-top: 35px;"),
   
-  fluidRow(
-    style = "margin-top: 15px;",
-    
-    column(
-      6,
+  jqui_draggable(div(style = "width:50%; padding:15px; float:left;", div(
       tags$h3(
         i18n$t("Search criterea"),
         switchInput(
@@ -396,10 +393,8 @@ ui <- fluidPage(
                    )
                  ))
        )  
-      )
-    ),
-    column(
-      6,
+      )))),
+      jqui_draggable(div(style = "width:50%; padding:15px; float:left;", div(
       fluidRow(column(12,
                       tags$h3(
                         i18n$t("Search results"),
@@ -611,10 +606,9 @@ ui <- fluidPage(
                    )
                  ))
        )
-      )
+      ))
     )
-  )
-)
+))
 
 server <- function(input, output, session) {
   kompetencer <- reactiveValues(ak = NULL, sk = list(), fk = list())
