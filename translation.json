@@ -3,6 +3,10 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "Hide", 
+        "da": "Skjul"
+      },
+      {
         "en": "Number of competences to show", 
         "da": "Antal kompetencer til visning"
       },
