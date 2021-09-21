@@ -1813,7 +1813,7 @@ server <- function(input, output, session) {
             formattedData$amount,
             ylim = ylim,
             main = paste0(v, "% vækst i perioden"),
-            ylab = "Antal annoncer",
+            ylab = i18n$t("Number of ads"),
             names.arg = formattedData$period
           )
           

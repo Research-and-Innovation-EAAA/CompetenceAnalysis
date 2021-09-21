@@ -3,6 +3,10 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "Number of ads", 
+        "da": "Antal annoncer"
+      },
+      {
         "en": "Hide", 
         "da": "Skjul"
       },
