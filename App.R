@@ -39,7 +39,8 @@ ui <- fluidPage(
   ),
   fluidRow(style = "border-bottom: 2px solid black; margin-top: 35px;"),
   
-  jqui_draggable(div(style = "width:50%; padding:15px; float:left;", div(
+  #jqui_draggable(
+    div(style = "width:50%; padding:15px; float:left;", div(
       tags$h3(
         i18n$t("Search criterea"),
         switchInput(
@@ -393,8 +394,10 @@ ui <- fluidPage(
                    )
                  ))
        )  
-      )))),
-      jqui_draggable(div(style = "width:50%; padding:15px; float:left;", div(
+      #)
+      ))),
+      #jqui_draggable(
+        div(style = "width:50%; padding:15px; float:left;", div(
       fluidRow(column(12,
                       tags$h3(
                         i18n$t("Search results"),
@@ -606,7 +609,8 @@ ui <- fluidPage(
                    )
                  ))
        )
-      ))
+      #)
+      )
     )
 ))
 
