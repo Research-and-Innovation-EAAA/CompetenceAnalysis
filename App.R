@@ -1499,6 +1499,10 @@ server <- function(input, output, session) {
         )
       arrange(wcData, freq) 
       wcData <- wcData[ order(-wcData$freq), ]
+<<<<<<< HEAD
+=======
+      #wcData <- csvData$kompetenceListe
+>>>>>>> e776968f9f7ccd4adfcb3a0f47fb0aca9232edcd
       output$wordcloud  = renderWordcloud2({
         wordcloud2(
           data = wcData,
