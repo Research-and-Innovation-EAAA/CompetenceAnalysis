@@ -13,7 +13,6 @@ library(wordcloud2)
 library(shinyWidgets)
 library(shinyjs)
 library(shinyjqui)
-
 source(file = 'credentials.R')
 i18n <- Translator$new(translation_json_path = "translation.json")
 i18n$set_translation_language(credentials.language)
@@ -1497,15 +1496,17 @@ server <- function(input, output, session) {
           )),
           digits = 0
         )
+      arrange(wcData, freq) 
+      wcData <- wcData[ order(-wcData$freq), ]
       #wcData <- csvData$kompetenceListe
-      output$wordcloud  = renderWordcloud2(
+      output$wordcloud  = renderWordcloud2({
         wordcloud2(
           data = wcData,
           color = input$wordcloudColor,
           size = input$wordcloudSize / 100,
           shape = input$wordcloudShape
         )
-      )
+      })
       
       setProgress(5 / 5)
     })
