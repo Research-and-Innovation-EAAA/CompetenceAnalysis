@@ -13,9 +13,17 @@ library(wordcloud2)
 library(shinyWidgets)
 library(shinyjs)
 library(shinyjqui)
+library(fontawesome)
+library(DT)
+library(data.table) 
+
 source(file = 'credentials.R')
 i18n <- Translator$new(translation_json_path = "translation.json")
 i18n$set_translation_language(credentials.language)
+
+tableFindingsValues <- data.table(id=numeric(length=0),
+                          title=character(length=0),
+                          match=character(length=0))
 
 ui <- fluidPage(
   useShinyjs(),
@@ -37,7 +45,7 @@ ui <- fluidPage(
     column(6, style = "margin-top: 5px; text-align: right", img(src = "EAAA_Logo.jpg"))
   ),
   fluidRow(style = "border-bottom: 2px solid black; margin-top: 35px;"),
-  
+      
   #jqui_draggable(
     div(style = "width:50%; padding:15px; float:left;", div(
       tags$h3(
@@ -394,7 +402,36 @@ ui <- fluidPage(
                  ))
        )  
       #)
-      ))),
+      )),
+      fluidRow(
+        div(style = "width:100%; padding:15px; float:left;", div(
+          tags$h3(
+            i18n$t("Findings"),
+            textOutput(outputId = "clickedWord", inline = TRUE),
+            switchInput(
+              inputId = "showFindings",
+              value = TRUE,
+              onLabel = i18n$t("Show"),
+              offLabel = i18n$t("Hide"),
+              size = 'mini',
+              inline = TRUE
+            )
+          ),
+          tags$div(
+            id="divFindings",
+#            tabsetPanel(
+#              tabPanel(
+#                title = i18n$t("Competences"),
+                wellPanel(
+                  tableOutput("values"),
+                  DTOutput('tableFindings')
+                )
+#              ) #tabPanel
+#            ) #tabsetPanel
+          )
+        ))
+      )
+      ),
       #jqui_draggable(
         div(style = "width:50%; padding:15px; float:left;", div(
       fluidRow(column(12,
@@ -627,7 +664,7 @@ server <- function(input, output, session) {
       kompetenceListe = list(),
       allQuery = NULL
     )
-  
+
   current <- reactiveValues(tab = 1)
   tabUpdates <-
     reactiveValues(
@@ -637,6 +674,31 @@ server <- function(input, output, session) {
       wordcloud = FALSE
     )
   lastShinyTree <- reactiveValues(tree = list())
+
+  reactiveTableFindingsValues <<- shiny::reactiveValues(x = tableFindingsValues)
+  output$tableFindings <- DT::renderDT({
+     DT::datatable(
+       isolate(reactiveTableFindingsValues$x),
+       option = list(
+         language = list(url = i18n$t("https://cdn.datatables.net/plug-ins/9dcbecd42ad/i18n/English.json")),
+         stateSave = TRUE,
+         columnDefs = list(list(visible=FALSE, targets=c(1))),
+         dom = paste0("<'row'<'col-sm-4'i><'col-sm-8'p>>",
+                      "<'row'<'col-sm-12'tr>>",
+                      "<'row'<'col-sm-6'l><'col-sm-6'f>>")
+       ), rownames = TRUE,
+       callback = 
+         JS("$('#tableFindings > ').on('page.dt', function() {
+                    Shiny.setInputValue('tableFindingsPage', table.page.info());
+                  }).on('length.dt', function() {
+                    Shiny.setInputValue('tableFindingsPage', table.page.info());
+                  });")
+     )
+  })
+  assign(x = "tableFindingsProxy", 
+         envir = .GlobalEnv,
+         value = DT::dataTableProxy('tableFindings')
+  )
   
   con <-
     dbConnect(
@@ -765,6 +827,11 @@ server <- function(input, output, session) {
     shinyjs::toggle("divSearchPanel", anim=TRUE)
   })
   
+  observeEvent(input$showFindings, ignoreInit = TRUE, {
+    ## hide element
+    shinyjs::toggle("divFindings", anim=TRUE)
+  })
+  
   observeEvent(input$showResultCriterea, ignoreInit = TRUE, {
     ## hide element
     shinyjs::toggle("divResultPanel", anim=TRUE)
@@ -846,6 +913,74 @@ server <- function(input, output, session) {
   ########################################
   #####     ADD/REMOVE OBSERVERS     #####
   ########################################
+  observeEvent(input$wordcloud_clicked_word, {
+    
+    #Create empty data frame containing words number of ads
+    print(str_split(input$wordcloud_clicked_word, ":"))
+    assign(x = "wordcloud_clicked_word_name", 
+           envir = .GlobalEnv,
+           value = str_split(input$wordcloud_clicked_word,":",n=2)[[1]][[1]]
+    )
+    output$clickedWord = renderText(paste0(" (\"", wordcloud_clicked_word_name, "\")"))  
+    assign(x = "wordcloud_clicked_word_size", 
+           envir = .GlobalEnv,
+           value = (csvData$kompetenceListe %>%
+                      filter(word == wordcloud_clicked_word_name) %>%
+                      select("freq"))[[1]]
+    )
+    tableFindingsValues <<- data.table(id=numeric(length=wordcloud_clicked_word_size),
+                                       title=character(length=wordcloud_clicked_word_size),
+                                       match=character(length=wordcloud_clicked_word_size))
+    loadTableFindingRows(1, input$tableFindings_state$length);
+    DT::replaceData(tableFindingsProxy, tableFindingsValues, resetPaging = TRUE, clearSelection = "all")
+  })
+  
+  loadTableFindingRows <- function(rowsStart, rowsEnd) {
+    rowsLength <- rowsEnd-rowsStart+1
+    
+    #print(paste0('input$tableFindingsPage ',rowsStart,":",rowsEnd ))
+    
+    #Update all displayed match rows
+    cacheTableName <- getSearchAdResultTableName();
+    
+    con <-
+      dbConnect(
+        RMariaDB::MariaDB(),
+        port = credentials.port,
+        host = credentials.host,
+        user = credentials.user,
+        password = credentials.password,
+        db = credentials.db,
+        bigint = c("numeric")
+      )
+    query <- paste0('
+  SELECT annonce_id id, title, SUBSTR(searchable_body, matchStart-50, 50+LENGTH(prefferredLabel)+50) `match`',
+                    ' FROM (  SELECT a._id annonce_id, a.title, a.searchable_body, REGEXP_INSTR(searchable_body, IF(k.overriddenSearchPatterns IS NULL, k.defaultSearchPatterns, k.overriddenSearchPatterns)) matchStart, k.prefferredLabel',
+                    ' FROM ', cacheTableName,' c JOIN `annonce` a ON c.annonce_id=a._id JOIN annonce_kompetence ak ON a._id=ak.annonce_id JOIN kompetence k ON k._id=ak.kompetence_id AND ak.k_prefferredLabel="', wordcloud_clicked_word_name,'"',
+                    ' LIMIT ',rowsStart-1,',',rowsLength, ') t',
+                    ' WHERE matchStart>0');
+    #print(query)
+    additionalFindings <-
+      dbGetQuery(
+        con, query
+      )
+    dbDisconnect(con)
+    print(additionalFindings)
+    
+    tableFindingsValues[rowsStart:rowsEnd,] <<- additionalFindings[0:rowsLength,]
+    #print(head(x=tableFindingsValues, n=30))
+    
+    DT::replaceData(tableFindingsProxy, tableFindingsValues, resetPaging = FALSE, clearSelection = "all")
+  }
+  
+  observeEvent(input$tableFindingsPage, {
+
+    rowsStart <- input$tableFindingsPage$start+1    
+    rowsEnd <- rowsStart+input$tableFindingsPage$length-1
+    loadTableFindingRows(rowsStart, rowsEnd)
+    
+  })
+  
   observeEvent(input$add, {
     if (!is.null(input$availableCategories)) {
       withProgress(message = "Tilføjer kompetence(r)", expr = {
@@ -868,6 +1003,7 @@ server <- function(input, output, session) {
       })
     }
   })
+  
   observeEvent(input$remove, {
     if (!is.null(input$selectedCategories)) {
       withProgress(message = "Fjerner kompetence(r)", expr = {
@@ -1499,6 +1635,15 @@ server <- function(input, output, session) {
         )
       arrange(wcData, freq) 
       wcData <- wcData[ order(-wcData$freq), ]
+      
+      
+      #filePath = system.file("examples/t.png",package = "wordcloud2")
+      
+      #output$wordcloud  = renderWordcloud2(wordcloud2(data = demoFreq, figPath = filePath, size = 0.4,color = "blue"))
+      
+      #using default clicked word input id
+      #output$print  = renderPrint(input$wordcloud_clicked_word)
+      
       output$wordcloud  = renderWordcloud2({
         wordcloud2(
           data = wcData,
@@ -1507,7 +1652,7 @@ server <- function(input, output, session) {
           shape = input$wordcloudShape
         )
       })
-      
+
       setProgress(5 / 5)
     })
   }

@@ -3,6 +3,14 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "https://cdn.datatables.net/plug-ins/9dcbecd42ad/i18n/English.json", 
+        "da": "https://cdn.datatables.net/plug-ins/9dcbecd42ad/i18n/Danish.json"
+      },
+      {
+        "en": "Findings", 
+        "da": "Fundne"
+      },
+      {
         "en": "Number of ads", 
         "da": "Antal annoncer"
       },
