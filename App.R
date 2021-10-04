@@ -685,7 +685,7 @@ server <- function(input, output, session) {
          columnDefs = list(list(visible=FALSE, targets=c(1))),
          dom = paste0("<'row'<'col-sm-4'i><'col-sm-8'p>>",
                       "<'row'<'col-sm-12'tr>>",
-                      "<'row'<'col-sm-6'l><'col-sm-6'f>>")
+                      "<'row'<'col-sm-5'l><'col-sm-7'f>>")
        ), rownames = TRUE,
        callback = 
          JS("$('#tableFindings > ').on('page.dt', function() {
@@ -916,7 +916,7 @@ server <- function(input, output, session) {
   observeEvent(input$wordcloud_clicked_word, {
     
     #Create empty data frame containing words number of ads
-    print(str_split(input$wordcloud_clicked_word, ":"))
+    #print(str_split(input$wordcloud_clicked_word, ":"))
     assign(x = "wordcloud_clicked_word_name", 
            envir = .GlobalEnv,
            value = str_split(input$wordcloud_clicked_word,":",n=2)[[1]][[1]]
@@ -928,7 +928,7 @@ server <- function(input, output, session) {
                       filter(word == wordcloud_clicked_word_name) %>%
                       select("freq"))[[1]]
     )
-    tableFindingsValues <<- data.table(id=numeric(length=wordcloud_clicked_word_size),
+    tableFindingsValues <<- data.table(id=numeric(wordcloud_clicked_word_size),
                                        title=character(length=wordcloud_clicked_word_size),
                                        match=character(length=wordcloud_clicked_word_size))
     loadTableFindingRows(1, input$tableFindings_state$length);
@@ -936,13 +936,16 @@ server <- function(input, output, session) {
   })
   
   loadTableFindingRows <- function(rowsStart, rowsEnd) {
+    #Guardian to test load is needed
+    rowsStart <- max(1,rowsStart)
+    rowsEnd <- min(nrow(tableFindingsValues),rowsEnd)
+    if(all(tableFindingsValues[rowsStart:rowsEnd,'id']>0)) {
+      return();
+    }
+
+    #Load data to be displayed
     rowsLength <- rowsEnd-rowsStart+1
-    
-    #print(paste0('input$tableFindingsPage ',rowsStart,":",rowsEnd ))
-    
-    #Update all displayed match rows
     cacheTableName <- getSearchAdResultTableName();
-    
     con <-
       dbConnect(
         RMariaDB::MariaDB(),
@@ -953,24 +956,17 @@ server <- function(input, output, session) {
         db = credentials.db,
         bigint = c("numeric")
       )
-    query <- paste0('
-  SELECT annonce_id id, title, SUBSTR(searchable_body, matchStart-50, 50+LENGTH(prefferredLabel)+50) `match`',
+    query <- paste0(' SELECT annonce_id id, title, SUBSTR(searchable_body, matchStart-50, 50+LENGTH(prefferredLabel)+50) `match`',
                     ' FROM (  SELECT a._id annonce_id, a.title, a.searchable_body, REGEXP_INSTR(searchable_body, IF(k.overriddenSearchPatterns IS NULL, k.defaultSearchPatterns, k.overriddenSearchPatterns)) matchStart, k.prefferredLabel',
                     ' FROM ', cacheTableName,' c JOIN `annonce` a ON c.annonce_id=a._id JOIN annonce_kompetence ak ON a._id=ak.annonce_id JOIN kompetence k ON k._id=ak.kompetence_id AND ak.k_prefferredLabel="', wordcloud_clicked_word_name,'"',
                     ' LIMIT ',rowsStart-1,',',rowsLength, ') t',
                     ' WHERE matchStart>0');
-    #print(query)
     additionalFindings <-
       dbGetQuery(
         con, query
       )
     dbDisconnect(con)
-    print(additionalFindings)
-    
     tableFindingsValues[rowsStart:rowsEnd,] <<- additionalFindings[0:rowsLength,]
-    #print(head(x=tableFindingsValues, n=30))
-    
-    DT::replaceData(tableFindingsProxy, tableFindingsValues, resetPaging = FALSE, clearSelection = "all")
   }
   
   observeEvent(input$tableFindingsPage, {
@@ -978,7 +974,7 @@ server <- function(input, output, session) {
     rowsStart <- input$tableFindingsPage$start+1    
     rowsEnd <- rowsStart+input$tableFindingsPage$length-1
     loadTableFindingRows(rowsStart, rowsEnd)
-    
+    DT::replaceData(tableFindingsProxy, tableFindingsValues, resetPaging = FALSE, clearSelection = "all")
   })
   
   observeEvent(input$add, {
