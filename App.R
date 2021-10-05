@@ -629,16 +629,6 @@ ui <- fluidPage(
                        choices = list(),
                        width = "100%"
                      ),
-                     tags$h5(style = "font-weight:bold", "CVR-Oplysninger:"),
-                     tableOutput(outputId = "annonceDataFields"),
-                     tags$h5(style = "font-weight:bold", "Kompetencer:"),
-                     tableOutput(outputId = "annonceKompetencer"),
-                     tags$h5(style = "font-weight:bold", "Annoncetekst:"),
-                     textOutput(outputId = "annonceText"),
-                     tags$style(
-                       type = "text/css",
-                       "#annonceDataFields td:first-child {font-weight:bold;}"
-                     ),
                      #make row names of table bold.
                      downloadButton("downloadAnnonceliste", "Download data"),
                      downloadButton("downloadAnnonceNumre", i18n$t("Download ID list"))
@@ -646,6 +636,35 @@ ui <- fluidPage(
                  ))
        )
       #)
+      ),
+      fluidRow(
+        div(style = "width:100%; padding:15px; float:left;", div(
+          tags$h3(i18n$t("Ad"),
+            switchInput(
+              inputId = "showAd",
+              value = TRUE,
+              onLabel = i18n$t("Show"),
+              offLabel = i18n$t("Hide"),
+              size = 'mini',
+              inline = TRUE
+            )
+          )
+        ))
+      ), 
+      tags$div(
+        id="divAdPanel",
+        wellPanel(
+          tags$h5(style = "font-weight:bold", "Annoncetekst:"),
+          textOutput(outputId = "annonceText"),
+          tags$h5(style = "font-weight:bold", "CVR-Oplysninger:"),
+          tableOutput(outputId = "annonceDataFields"),
+          tags$h5(style = "font-weight:bold", "Kompetencer:"),
+          tableOutput(outputId = "annonceKompetencer"),
+          tags$style(
+            type = "text/css",
+            "#annonceDataFields td:first-child {font-weight:bold;}"
+          )
+        )
       )
     )
 ))
@@ -686,12 +705,19 @@ server <- function(input, output, session) {
          dom = paste0("<'row'<'col-sm-4'i><'col-sm-8'p>>",
                       "<'row'<'col-sm-12'tr>>",
                       "<'row'<'col-sm-5'l><'col-sm-7'f>>")
-       ), rownames = TRUE,
+       ),
+       select = "single", 
+       rownames = TRUE,
        callback = 
          JS("$('#tableFindings > ').on('page.dt', function() {
                     Shiny.setInputValue('tableFindingsPage', table.page.info());
                   }).on('length.dt', function() {
                     Shiny.setInputValue('tableFindingsPage', table.page.info());
+                  }).on('click.dt', 'tr', function() {
+                    table.$('tr.selected').removeClass('selected');
+                    $(this).toggleClass('selected');            
+                    Shiny.onInputChange('tableFindingsSelected',
+                            table.rows('.selected').data()[0][0]);
                   });")
      )
   })
@@ -837,6 +863,11 @@ server <- function(input, output, session) {
     shinyjs::toggle("divResultPanel", anim=TRUE)
   })
   
+  observeEvent(input$showAd, ignoreInit = TRUE, {
+    ## hide element
+    shinyjs::toggle("divAdPanel", anim=TRUE)
+  })
+  
   observeEvent(input$wordcloudFlatten, ignoreInit = TRUE, {
     updateCurrentTab()
   })
@@ -970,11 +1001,18 @@ server <- function(input, output, session) {
   }
   
   observeEvent(input$tableFindingsPage, {
-
+    
     rowsStart <- input$tableFindingsPage$start+1    
     rowsEnd <- rowsStart+input$tableFindingsPage$length-1
     loadTableFindingRows(rowsStart, rowsEnd)
     DT::replaceData(tableFindingsProxy, tableFindingsValues, resetPaging = FALSE, clearSelection = "all")
+  })
+  
+  observeEvent(input$tableFindingsSelected, {
+    
+    print(input$tableFindings_rows_selected)
+    loadAd(tableFindingsValues[input$tableFindings_rows_selected,1])
+    
   })
   
   observeEvent(input$add, {
@@ -1204,6 +1242,11 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$annonceList, {
+    id <- unlist(strsplit(input$annonceList, " "))[1]
+    loadAd(id)
+  })
+  
+  loadAd <- function(id) {  
     withProgress(message = "Finder annoncetekst", expr = {
       setProgress(0)
       con <-
@@ -1217,8 +1260,6 @@ server <- function(input, output, session) {
           bigint = c("numeric")
         )
       stopifnot(is.object(con))
-      
-      id <- unlist(strsplit(input$annonceList, " "))[1]
       
       annonceDataFields <-
         dbGetQuery(
@@ -1276,7 +1317,7 @@ server <- function(input, output, session) {
       
       setProgress(1)
     })
-  })
+  }
   
   ############################################################     FUNCTIONS     ############################################################
   
