@@ -701,7 +701,7 @@ server <- function(input, output, session) {
        option = list(
          language = list(url = i18n$t("https://cdn.datatables.net/plug-ins/9dcbecd42ad/i18n/English.json")),
          stateSave = TRUE,
-         columnDefs = list(list(visible=FALSE, targets=c(1))),
+         #columnDefs = list(list(visible=FALSE, targets=c(1))),
          dom = paste0("<'row'<'col-sm-4'i><'col-sm-8'p>>",
                       "<'row'<'col-sm-12'tr>>",
                       "<'row'<'col-sm-5'l><'col-sm-7'f>>")
