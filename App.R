@@ -422,15 +422,11 @@ ui <- fluidPage(
           ),
           tags$div(
             id="divFindings",
-#            tabsetPanel(
-#              tabPanel(
-#                title = i18n$t("Competences"),
                 wellPanel(
                   tableOutput("values"),
-                  DTOutput('tableFindings')
+                  DTOutput('tableFindings'),
+                  downloadButton("downloadFindings", "Download")
                 )
-#              ) #tabPanel
-#            ) #tabsetPanel
           )
         ))
       )
@@ -804,6 +800,14 @@ server <- function(input, output, session) {
     
     setProgress(1)
   })
+  
+  output$downloadFindings <- downloadHandler(
+    filename = 'findings_liste.csv',
+    content = function(file) {
+      loadTableFindingRows(1,nrow(tableFindingsValues))
+      write.csv(tableFindingsValues, file, row.names = FALSE)
+    }
+  )
   
   output$downloadAnnonceliste <- downloadHandler(
     filename = 'annonce_liste.csv',
