@@ -817,7 +817,7 @@ server <- function(input, output, session) {
           bigint = c("numeric")
         )
       stopifnot(is.object(con))
-      allCompetenceQuery(
+      allCompetenceQuery <- buildCompetenceQuery(
         includeSearchedCompetences = TRUE,
         includeOtherCompetences = TRUE,
         returnCompetencesDescending = TRUE,
