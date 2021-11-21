@@ -28,7 +28,7 @@ tableFindingsValues <- data.table(id=numeric(length=0),
 ui <- fluidPage(
   useShinyjs(),
   fluidRow(
-    style = "margin-top: 5px;",
+    style = "margin-top: 5px;margin-right: 0px;margin-left: 0px;",
     column(
       6,
       style = "margin-top: 0px; font-size: 16px;",
@@ -42,7 +42,10 @@ ui <- fluidPage(
       tags$span(paste0(" ", i18n$t("and"), " ")),
       tags$a(href = "https://www.careerjet.dk", "CareerJet")
     ),
-    column(6, style = "margin-top: 5px; text-align: right", img(src = "EAAA_Logo.jpg"))
+    column(6, 
+           style = "text-align: right; margin-top: 25px;",
+           actionLink(inputId="settingsCog", icon("cog","fa-2x"))
+    ),
   ),
   fluidRow(style = "border-bottom: 2px solid black; margin-top: 35px;"),
       
@@ -434,20 +437,33 @@ ui <- fluidPage(
       ),
       #jqui_draggable(
         div(style = "width:50%; padding:15px; float:left;", div(
-      fluidRow(column(12,
-                      tags$h3(
-                        i18n$t("Search results"),
-                        textOutput(outputId = "resultCountField", inline = TRUE),
-                        switchInput(
-                          inputId = "showResultCriterea",
-                          value = TRUE,
-                          onLabel = i18n$t("Show"),
-                          offLabel = i18n$t("Hide"),
-                          size = 'mini',
-                          inline = TRUE
-                        )
-                      ),
-      )), 
+      fluidRow(
+          column(8,
+               tags$h3(
+                 i18n$t("Search results"),
+                 textOutput(outputId = "resultCountField", inline = TRUE),
+                 switchInput(
+                   inputId = "showResultCriterea",
+                   value = TRUE,
+                   onLabel = i18n$t("Show"),
+                   offLabel = i18n$t("Hide"),
+                   size = 'mini',
+                   inline = TRUE
+                 )
+               )
+          ),
+          column(4,
+                      hidden(div(style = "float:right", id="divSearchNow", tags$h3(actionBttn(
+                        inputId = "searchNow",
+                        style = "simple",
+                        icon = icon("search"),
+                        label = i18n$t("Search now"),
+                        color = "primary",
+                        size = "sm",
+                        block = FALSE
+                      ))))
+          )
+      ),
       tags$div(
        id="divResultPanel",
        tabsetPanel(
@@ -692,6 +708,11 @@ server <- function(input, output, session) {
       annonce = FALSE,
       wordcloud = FALSE
     )
+  
+  searchMode <- reactiveValues(
+    auto = TRUE
+  )
+  
   lastShinyTree <- reactiveValues(tree = list())
 
   reactiveTableFindingsValues <<- shiny::reactiveValues(x = tableFindingsValues)
@@ -707,7 +728,8 @@ server <- function(input, output, session) {
                       "<'row'<'col-sm-5'l><'col-sm-7'f>>")
        ),
        select = "single", 
-       rownames = TRUE,
+       rownames = TRUE, 
+       colnames=c(i18n$t("ID"),i18n$t("Title"),i18n$t("Match")),
        callback = 
          JS("$('#tableFindings > ').on('page.dt', function() {
                     Shiny.setInputValue('tableFindingsPage', table.page.info());
@@ -845,6 +867,47 @@ server <- function(input, output, session) {
       progressionListe <- dbGetQuery(con, csvData$progressionQuery)
       dbDisconnect(con)
       write.csv(progressionListe, file, row.names = FALSE)
+    }
+  )
+  
+  observeEvent(
+    eventExpr=input$settingsCog, ignoreInit=TRUE,
+    {
+      showModal(modalDialog(
+        title = i18n$t("Setting"),
+        checkboxInput(inputId = "autosearchmode", label = i18n$t("Automatic search"), searchMode$auto),
+        footer = NULL,
+        easyClose = TRUE
+      ))
+    }
+  )
+  
+  observeEvent(
+    eventExpr=input$autosearchmode, ignoreInit=FALSE,
+    {
+      if (input$autosearchmode) {
+        searchMode$auto <- TRUE
+      } else {
+        searchMode$auto <- FALSE
+      }
+    }
+  )
+  
+  observeEvent(
+    eventExpr=searchMode$auto, ignoreInit=TRUE,
+    {
+      if (searchMode$auto) {
+        shinyjs::hide("divSearchNow", anim=TRUE)
+      } else {
+        shinyjs::show("divSearchNow", anim=TRUE)
+      }
+    }
+  )
+  
+  observeEvent(
+    eventExpr=input$searchNow, ignoreInit=TRUE,
+    {
+      updateCurrentTabNow();
     }
   )
   
@@ -1372,6 +1435,12 @@ server <- function(input, output, session) {
   }
   
   updateCurrentTab <- function() {
+    if (searchMode$auto) {
+      updateCurrentTabNow()
+    }
+  }
+  
+  updateCurrentTabNow <- function() {
     if (current$tab == 1) {
       updateKompetenceDiagram()
       tabUpdates$progression <- TRUE

@@ -3,6 +3,22 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "Setting", 
+        "da": "Indstilling"
+      },
+      {
+        "en": "Automatic search", 
+        "da": "Automatisk søgning"
+      },
+      {
+        "en": "Search now", 
+        "da": "Søg nu"
+      },
+      {
+        "en": "Title", 
+        "da": "Titel"
+      },
+      {
         "en": "https://cdn.datatables.net/plug-ins/9dcbecd42ad/i18n/English.json", 
         "da": "https://cdn.datatables.net/plug-ins/9dcbecd42ad/i18n/Danish.json"
       },
