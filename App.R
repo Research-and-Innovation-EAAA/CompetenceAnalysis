@@ -449,7 +449,7 @@ ui <- fluidPage(
                )
           ),
           column(4,
-                      hidden(div(style = "float:right", id="divSearchNow", tags$h3(actionBttn(
+                      div(style = "float:right", id="divSearchNow", tags$h3(actionBttn(
                         inputId = "searchNow",
                         style = "simple",
                         icon = icon("search"),
@@ -457,7 +457,7 @@ ui <- fluidPage(
                         color = "primary",
                         size = "sm",
                         block = FALSE
-                      ))))
+                      )))
           )
       ),
       tags$div(
@@ -706,7 +706,7 @@ server <- function(input, output, session) {
     )
   
   searchMode <- reactiveValues(
-    auto = TRUE
+    auto = FALSE
   )
   
   lastShinyTree <- reactiveValues(tree = list())
