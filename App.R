@@ -1546,6 +1546,8 @@ server <- function(input, output, session) {
               else
                 setdiff(searchList, allTreeNodes),
               collapse = ", ")
+          if (superkompetencelist=="")
+            superkompetencelist <- "-1"
           qq <-
             paste0(
               'select k_sub._id from kompetence k_sub join kompetence_kategorisering kk ON k_sub.conceptUri = kk.subkompetence and kk.superkompetence in (select k_super.conceptUri from kompetence k_super where k_super._id in (',
