@@ -666,11 +666,11 @@ ui <- fluidPage(
       tags$div(
         id="divAdPanel",
         wellPanel(
-          tags$h5(style = "font-weight:bold", "Annoncetekst:"),
+          tags$h5(style = "font-weight:bold", i18n$t("Ad Text:")),
           textOutput(outputId = "annonceText"),
-          tags$h5(style = "font-weight:bold", "CVR-Oplysninger:"),
+          tags$h5(style = "font-weight:bold", i18n$t("CVR information:")),
           tableOutput(outputId = "annonceDataFields"),
-          tags$h5(style = "font-weight:bold", "Kompetencer:"),
+          tags$h5(style = "font-weight:bold", i18n$t("Competences:")),
           tableOutput(outputId = "annonceKompetencer"),
           tags$style(
             type = "text/css",
