@@ -3,6 +3,22 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "Weeks", 
+        "da": "Uger"
+      },
+      {
+        "en": "Months", 
+        "da": "Måneder"
+      },
+      {
+        "en": "Quarters", 
+        "da": "Kvartaler"
+      },
+      {
+        "en": "Years", 
+        "da": "År"
+      },
+      {
         "en": "Setting", 
         "da": "Indstilling"
       },
@@ -275,8 +291,8 @@
         "da": "Progression"
       },
       {
-        "en": "Progression Period",
-        "da": "Periodeopdelinge"
+        "en": "Periods",
+        "da": "Perioder"
       },
       {
         "en": "Ad List",

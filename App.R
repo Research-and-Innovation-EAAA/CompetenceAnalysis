@@ -621,8 +621,8 @@ ui <- fluidPage(
           wellPanel(
             selectInput(
               inputId = "progressionDateFormat",
-              label = i18n$t("Progression Period"),
-              choices = list("Uge", "Måned", "År")
+              label = i18n$t("Periods"),
+              choices = list(i18n$t("Weeks"), i18n$t("Months"), i18n$t("Quarters"), i18n$t("Years"))
             ),
             textOutput(outputId = "progressionErrorField"),
             plotOutput("progressionDiagram", height = 620),
@@ -2000,13 +2000,16 @@ server <- function(input, output, session) {
   updateProgressionDiagram <- function() {
     #if(length(kompetencer$sk) != 0){
     withProgress(message = "Opdaterer diagram", expr = {
-      if (input$progressionDateFormat == "Uge") {
+      if (input$progressionDateFormat == i18n$t("Weeks")) {
         periodQuery <- "DATE_FORMAT(timeStamp,'%Y-%U')"
       }
-      else if (input$progressionDateFormat == "Måned") {
+      else if (input$progressionDateFormat == i18n$t("Months")) {
         periodQuery <- "DATE_FORMAT(timeStamp,'%Y-%m')"
       }
-      else if (input$progressionDateFormat == "År") {
+      else if (input$progressionDateFormat == i18n$t("Quarters")) {
+        periodQuery <- "CONCAT(DATE_FORMAT(timeStamp,'%Y-'),QUARTER(timeStamp))"
+      }
+      else if (input$progressionDateFormat == i18n$t("Years")) {
         periodQuery <- "DATE_FORMAT(timeStamp,'%Y')"
       }
       else {
