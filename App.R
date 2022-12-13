@@ -619,10 +619,23 @@ ui <- fluidPage(
         tabPanel(
           "Progression",
           wellPanel(
-            selectInput(
-              inputId = "progressionDateFormat",
-              label = i18n$t("Periods"),
-              choices = list(i18n$t("Weeks"), i18n$t("Months"), i18n$t("Quarters"), i18n$t("Years"))
+            column(
+              6,
+              selectInput(
+                inputId = "progressionDateFormat",
+                label = i18n$t("Periods"),
+                choices = list(i18n$t("Weeks"), i18n$t("Months"), i18n$t("Quarters"), i18n$t("Years"))
+              )
+            ),
+            column(
+              6,
+              tags$h5(style = "font-weight:bold", i18n$t("Show as part of labour market")),
+              checkboxInput(
+                "calcPartOfLabourMarket","", FALSE),
+              bsTooltip(
+                id = "calcPartOfLabourMarket",
+                title = i18n$t("Show as part of labour market")
+              )
             ),
             textOutput(outputId = "progressionErrorField"),
             plotOutput("progressionDiagram", height = 620),
@@ -1962,7 +1975,36 @@ server <- function(input, output, session) {
   }
   
   getSearchAdResultTableName <- function()  {
-    searchParam <- buildSearchParameterJSON()
+    criteriaJSON <- buildSearchParameterJSON()
+    return(prepareCacheTable(criteriaJSON))
+  }
+  
+  getAllAdsPeriodTableName <- function()  {
+    # Build period criteria
+    periodParam <- '"period":'
+    periodType <-
+      setClass("Period", slots = c(fromTime = "Date", toTime = "Date"))
+    periodObject = periodType(fromTime = input$dateRange[1],
+                              toTime = input$dateRange[2])
+    periodParam <-
+      paste0(periodParam,
+             toJSON(
+               unclass(periodObject),
+               force = TRUE,
+               auto_unbox = TRUE
+             ))
+    
+    criteriaJSON <- paste0(
+      "{",
+      periodParam,
+      "}"
+    )
+    # print(paste0("criteriaJSON: ", criteriaJSON))
+    
+    return(prepareCacheTable(criteriaJSON))
+  }
+  
+  prepareCacheTable <- function(searchParam)  {
     dbQuery <-
       paste0("CALL `prepareCacheTable`('", searchParam, "')")
     con <-
@@ -1985,6 +2027,7 @@ server <- function(input, output, session) {
     } else {
       session$userData$lastSearchTable <- tableName
     }
+    #print(paste0("prepareCacheTable: ",tableName))
     result <-
       dbGetQuery(con,
                  paste0("SELECT count(*) numberOfFoundAds FROM ", tableName))
@@ -2018,6 +2061,7 @@ server <- function(input, output, session) {
       
       setProgress(0)
       cacheTableName <- getSearchAdResultTableName()
+      # print(paste0("cacheTableName=",cacheTableName))
       
       setProgress(1 / 7)
       con <-
@@ -2040,7 +2084,27 @@ server <- function(input, output, session) {
           cacheTableName,
           " c ON a._id=c.annonce_id group by period"
         )
-      #print(qq)
+      if (input$calcPartOfLabourMarket) {
+        #print("calcPartOfLabourMarket=TRUE")
+        cacheAllAdsTableName <- getAllAdsPeriodTableName()
+        csvData$progressionQuery <-
+          paste0(
+            "SELECT searched_ads.period period, 100*searched_ads.amount/market_ads.amount amount FROM ",
+            "( ",
+            csvData$progressionQuery,
+            " ) searched_ads JOIN ( ",
+            "SELECT ",
+            periodQuery,
+            " period, count(*) amount FROM annonce a JOIN ",
+            cacheAllAdsTableName,
+            " c ON a._id=c.annonce_id group by period ",
+            ")  market_ads ON searched_ads.period=market_ads.period"
+          )
+        # print(paste0("cacheAllAdsTableName=",cacheAllAdsTableName))
+        # print(paste0("query: ",csvData$progressionQuery))
+      }
+
+      # print(qq)
       progressionData <- data.frame()
       formattedData <-
         rbind(progressionData,
@@ -2072,13 +2136,20 @@ server <- function(input, output, session) {
         
         setProgress(6 / 7)
         
+        if (input$calcPartOfLabourMarket) {
+          progressionLabel <- i18n$t("Percentage of labour market")
+        } else
+        {
+          progressionLabel <- i18n$t("Number of ads")
+        }
+        
         output$progressionDiagram <- renderPlot({
           ylim <- c(0, 1.1 * max(formattedData$amount))
           xx <- barplot(
             formattedData$amount,
             ylim = ylim,
             main = paste0(v, "% vækst i perioden"),
-            ylab = i18n$t("Number of ads"),
+            ylab = progressionLabel,
             names.arg = formattedData$period
           )
           
@@ -2109,11 +2180,6 @@ server <- function(input, output, session) {
       }
       setProgress(1)
     })
-    #}
-    #else{
-    #  output$progressionErrorField <- renderText("")
-    #  output$progressionDiagram <- NULL
-    #}
   }
   
   updateAnnonceList <- function() {

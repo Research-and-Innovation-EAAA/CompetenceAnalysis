@@ -3,6 +3,10 @@
   "languages": ["en", "da"],
   "translation": [
       {
+        "en": "Show as part of labour market", 
+        "da": "Vis som andel af arbejdsmarkedet"
+      },
+      {
         "en": "Weeks", 
         "da": "Uger"
       },
@@ -49,6 +53,10 @@
       {
         "en": "Number of ads", 
         "da": "Antal annoncer"
+      },
+      {
+        "en": "Percentage of labour market", 
+        "da": "Procent af arbejdsmarkedet"
       },
       {
         "en": "Hide", 
