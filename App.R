@@ -706,6 +706,7 @@ server <- function(input, output, session) {
     reactiveValues(
       annonceListe = list(),
       kompetenceListe = list(),
+      progressionListe = list(),
       allQuery = NULL
     )
 
@@ -881,9 +882,9 @@ server <- function(input, output, session) {
           bigint = c("numeric")
         )
       stopifnot(is.object(con))
-      progressionListe <- dbGetQuery(con, csvData$progressionQuery)
+      csvData$progressionListe <- dbGetQuery(con, csvData$progressionQuery)
       dbDisconnect(con)
-      write.csv(progressionListe, file, row.names = FALSE)
+      write.csv(csvData$progressionListe, file, row.names = FALSE)
     }
   )
   
@@ -2106,9 +2107,10 @@ server <- function(input, output, session) {
 
       # print(qq)
       progressionData <- data.frame()
+      csvData$progressionListe <- dbGetQuery(con, csvData$progressionQuery)
       formattedData <-
         rbind(progressionData,
-              dbGetQuery(con, csvData$progressionQuery))
+              csvData$progressionListe)
       
       dbDisconnect(con)
       
